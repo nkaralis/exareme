@@ -39,6 +39,7 @@ public class SinlgePlanDFLGenerator {
 	}
 
 	public ResultList generate() {
+		//printPlan(new MemoKey(root, null));
 		ResultList qs = new ResultList();
 		MemoKey rootkey = new MemoKey(root, null);
 

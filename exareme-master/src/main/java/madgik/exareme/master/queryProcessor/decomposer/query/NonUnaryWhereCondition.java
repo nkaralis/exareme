@@ -18,6 +18,7 @@ import com.google.common.hash.Hashing;
 public class NonUnaryWhereCondition implements Operand {
 
 	private List<Operand> ops;
+	private byte joinClass;
 	// private Operand leftOp;
 	// private Operand rightOp;
 	String operator;
@@ -33,11 +34,13 @@ public class NonUnaryWhereCondition implements Operand {
 		this.ops.add(left);
 		this.ops.add(right);
 		this.operator = operator;
+		this.joinClass=-1;
 	}
 
 	public NonUnaryWhereCondition(List<Operand> operands, String operator) {
 		this.ops = operands;
 		this.operator = operator;
+		this.joinClass=-1;
 	}
 
 	@Override

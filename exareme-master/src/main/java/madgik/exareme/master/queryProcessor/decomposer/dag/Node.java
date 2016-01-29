@@ -751,7 +751,7 @@ public class Node {
 			return 0;
 		}
 		else{
-			if(this.type==Node.OR){
+			if(this.opCode==Node.JOIN){
 			i++;
 			}
 			this.isMaterialised=true;

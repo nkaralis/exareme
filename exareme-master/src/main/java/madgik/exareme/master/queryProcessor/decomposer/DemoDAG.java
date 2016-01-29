@@ -1,5 +1,13 @@
 package madgik.exareme.master.queryProcessor.decomposer;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoReaderDB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.NamesToAliases;
 import madgik.exareme.master.queryProcessor.decomposer.federation.QueryDecomposer;
@@ -64,9 +72,11 @@ public class DemoDAG {
 			"((QVIEW6.\"wlbTotalCoreLength\" > 50) AND (QVIEW2.\"wlbCompletionYear\" >= 2008))) SUB";
 	
 	public static void main(String[] args) throws Exception {
-		
-		SQLQuery query = SQLQueryParser.parse(queryExample);
-		QueryDecomposer d = new QueryDecomposer(query, "/tmp/", 1, null);
+		String random=(generateRandomQuery(5, 2));
+		//String file = readFile("/home/dimitris/join6.txt");
+		String example="Select A.id from A A, B B, C C, D D where A.id=B.id and B.n=C.n and B.id=D.id";
+		SQLQuery query = SQLQueryParser.parse(example);
+		QueryDecomposer d = new QueryDecomposer(query, "/tmp/", 128, null);
 		
 		d.setN2a(new NamesToAliases());
 		
@@ -75,6 +85,87 @@ public class DemoDAG {
 		}
 		
 
+	}
+	
+	public static String generateRandomQuery(int noOfTables, int noOfAttributes){
+		if(noOfTables<2){
+			return "";
+		}
+		List<HashSet<Integer>> connectedSets=new ArrayList<HashSet<Integer>>();
+		StringBuilder sb=new StringBuilder();
+		sb.append("Select temp1.att1 from ");
+		String delimiter="";
+		for(int i=1;i<noOfTables+1;i++){
+			HashSet<Integer> hs=new HashSet<Integer>();
+			hs.add(i);
+			connectedSets.add(hs);
+			sb.append(delimiter);
+			sb.append("temp");
+			sb.append(i);
+			delimiter=", ";
+		}
+		sb.append(" where ");
+		delimiter="";
+		for(int i=1;i<noOfTables;i++){
+			sb.append(delimiter);
+			sb.append("temp");
+			sb.append(i);
+			sb.append(".att");
+			sb.append(getRandomInt(noOfAttributes));
+			sb.append("=temp");
+			HashSet<Integer> conset=null;
+			for(HashSet<Integer> next:connectedSets){
+				if(next.contains(i)){
+					conset=next;
+					break;
+				}
+			}
+			int otherTable=getRandomInt(noOfTables, conset);
+			HashSet<Integer> otherset=null;
+			for(HashSet<Integer> next:connectedSets){
+				if(next.contains(otherTable)){
+					otherset=next;
+					break;
+				}
+			}
+			for(Integer j:otherset){
+				conset.add(j);
+			}
+			connectedSets.remove(otherset);
+			sb.append(otherTable);
+			sb.append(".att");
+			sb.append(getRandomInt(noOfAttributes));
+			delimiter=" and ";
+		}
+		
+		
+		return sb.toString();
+	}
+	
+	public static int getRandomInt(int max){
+		return ThreadLocalRandom.current().nextInt(1, max+1);
+	}
+	public static int getRandomInt(int max,HashSet<Integer> exclude){
+		int result=ThreadLocalRandom.current().nextInt(1, max+1);
+		while(exclude.contains(result)){
+			result=ThreadLocalRandom.current().nextInt(1, max+1);
+		}
+		
+		return result;
+	}
+	
+	private static String readFile(String file) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(file));
+		String line = null;
+		StringBuilder stringBuilder = new StringBuilder();
+		String ls = System.getProperty("line.separator");
+
+		while ((line = reader.readLine()) != null) {
+			stringBuilder.append(line);
+			stringBuilder.append(ls);
+		}
+		reader.close();
+		return stringBuilder.toString();
 	}
 
 }
