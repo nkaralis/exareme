@@ -199,6 +199,7 @@ public final class Histogram {
             this.setBucketIndex(new TreeMap<Double, Bucket>(h2.getBucketIndex()));
         else if (h2.isTransparentHistogram() && !this.isTransparentHistogram())
         	h2.setBucketIndex(new TreeMap<Double, Bucket>(this.getBucketIndex()));
+        
 
         if (!existsIntersection(h2)) {
             System.out.println(this);
@@ -614,6 +615,7 @@ public final class Histogram {
             this.setBucketIndex(new TreeMap<Double, Bucket>(h2.getBucketIndex()));
         else if (h2.isTransparentHistogram() && !this.isTransparentHistogram())
             h2.setBucketIndex(new TreeMap<Double, Bucket>(this.getBucketIndex()));
+        
 
         if (!existsIntersection(h2)) {
             System.out.println(this);

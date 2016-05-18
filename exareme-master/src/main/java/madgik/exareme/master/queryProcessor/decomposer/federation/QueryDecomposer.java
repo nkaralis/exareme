@@ -267,6 +267,7 @@ public class QueryDecomposer {
 		sipToUnions = new SipToUnions();
 		sipToUnions.put(unionnumber, new HashSet<SipNode>());
 		expandDAG(root);
+
 		// System.out.println("expandtime:"+(System.currentTimeMillis()-b));
 		// System.out.println("noOfnode:"+root.count(0));
 		if (this.useSIP) {
@@ -598,6 +599,7 @@ public class QueryDecomposer {
 					expandDAG(inpEq);
 
 				}
+				
 
 				// String a=op.getChildAt(0).dotPrint();
 				// aplly all possible transfromations to op
@@ -922,7 +924,6 @@ public class QueryDecomposer {
 										} else {
 											hashes.put(associativity.getHashId(), associativity);
 											table.addChild(associativity);
-
 											// table.setPartitionedOn(new
 											// PartitionCols(newBwc.getAllColumnRefs()));
 											hashes.put(table.getHashId(), table);
@@ -952,7 +953,7 @@ public class QueryDecomposer {
 										// newBwc2.setLeftOp(bwc.getRightOp());
 										associativityTop.setObject(newBwc2);
 										associativityTop.addChild(table);
-										associativityTop.setExpanded(true);
+										//associativityTop.setExpanded(true);
 
 										// System.out.println(associativityTop.getObject().toString());
 										if (!hashes.containsKey(associativityTop.getHashId())) {
@@ -1015,9 +1016,12 @@ public class QueryDecomposer {
 
 				}
 
-				if (!(op.getObject() instanceof NonUnaryWhereCondition)) {
-					op.computeHashID();
-				}
+				//if (!(op.getObject() instanceof NonUnaryWhereCondition)) {
+					if(!hashes.containsKey(op.computeHashID())){
+						hashes.put(op.computeHashID(), op);
+					}
+					
+				//}
 				op.setExpanded(true);
 
 			}
@@ -1089,9 +1093,20 @@ public class QueryDecomposer {
 			}
 			p.addChildAt(q, pos);
 			if (hashes.containsKey(p.getHashId())) {
+				Node pddd=hashes.get(p.getHashId());
 				// System.out.println("further unification!");
-
-				unify(hashes.get(p.getHashId()).getFirstParent(), p.getFirstParent());
+				if(hashes.get(p.getHashId()).getFirstParent()==p.getFirstParent()){
+					Node fp=p.getFirstParent();
+					hashes.remove(fp.getHashId());
+					fp.removeChild(p);
+					if(p.getParents().isEmpty()){
+						p.removeAllChildren();
+					}
+					hashes.put(fp.getHashId(), fp);
+				}
+				else{
+					unify(hashes.get(p.getHashId()).getFirstParent(), p.getFirstParent());
+				}
 			} else {
 				hashes.put(p.getHashId(), p);
 			}

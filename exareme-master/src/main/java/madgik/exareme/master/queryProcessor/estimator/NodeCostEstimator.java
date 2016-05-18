@@ -139,6 +139,10 @@ public class NodeCostEstimator {
         double leftRelSize = left.getNodeInfo().outputRelSize();
         double rightRelTuples = right.getNodeInfo().getNumberOfTuples();
         double rightRelSize = right.getNodeInfo().outputRelSize();
+        
+        if(leftRelTuples<0.5||rightRelTuples<0.5){
+        	return 0.0;
+        }
 
         //        double childrenMaxResponseTime = Math.max(leftRelSize, rightRelSize);
         double responseTime = localJoinProcessingTime(leftRelTuples, leftRelSize, rightRelTuples,

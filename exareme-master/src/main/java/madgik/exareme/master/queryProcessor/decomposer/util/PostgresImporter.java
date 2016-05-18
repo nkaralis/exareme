@@ -28,19 +28,19 @@ import madgik.exareme.master.queryProcessor.estimator.db.Schema;
 public class PostgresImporter {
 
 	public static void main(String[] args) throws Exception {
-		boolean importtables=false;
+		boolean importtables=true;
 		boolean analyze=false;
 		boolean analyzeSQLITE=false;
-		boolean vacuum = true;
-		String path="/media/dimitris/T/exaremenpd500/";
+		boolean vacuum = false;
+		String path="/media/dimitris/T/exaremetest/";
 		DB dbinfo=new DB("ex");
 		dbinfo.setSchema("public");
 		dbinfo.setDriver("org.postgresql.Driver");
 		dbinfo.setPass("gray769watt724!@#");
 		dbinfo.setUser("postgres");
-		dbinfo.setMadisString("postgres h:localhost port:5432 u:postgres p:gray769watt724!@# db:npd_vig_scale100");
-		dbinfo.setURL("jdbc:postgresql://localhost/npd_vig_scale100");
-		String url = "jdbc:postgresql://localhost/npd_vig_scale100";
+		dbinfo.setMadisString("postgres h:localhost port:5432 u:postgres p:gray769watt724!@# db:npd_vig_scale1");
+		dbinfo.setURL("jdbc:postgresql://localhost/npd_vig_scale1");
+		String url = "jdbc:postgresql://localhost/npd_vig_scale1";
 		Properties props = new Properties();
 		props.setProperty("user","postgres");
 		props.setProperty("password","gray769watt724!@#");

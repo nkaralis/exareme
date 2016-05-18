@@ -333,6 +333,7 @@ public class SinlgePlanDFLGenerator {
 					}
 				}
 				SQLQuery toReplace = new SQLQuery();
+			
 				StringBuffer toRepl = new StringBuffer();
 				
 				String separator = "";
