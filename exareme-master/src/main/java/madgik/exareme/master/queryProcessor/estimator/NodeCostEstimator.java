@@ -133,6 +133,11 @@ public class NodeCostEstimator {
     		//bushy join
     		return 1000000.0;
     	}
+    	
+    	//if(left.getDescendantBaseTables().contains("alias0")){
+    		//bushy join
+    	///	return 1000000.0;
+    	//}
 
 
         double leftRelTuples = left.getNodeInfo().getNumberOfTuples();

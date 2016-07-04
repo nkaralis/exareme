@@ -67,7 +67,7 @@ public class Stat implements StatExtractor {
             ResultSet resultColumns =
                 dbmd.getColumns(catalog, schemaPattern, tableNamePattern, columnNamePattern);
 
-            int count = OptiqueAnalyzer.getCountFor(tableName, sch);
+            int count = getCount(tableName);
 
             if (count == 0) {
                 log.debug("Empty table");
@@ -115,6 +115,7 @@ public class Stat implements StatExtractor {
                 columnMap.put(columnName, c);
 
             }
+            resultColumns.close();
 
             ResultSet pkrs = dbmd.getExportedKeys("", "", tableName);
             String pkey = "DEFAULT_KEY";
@@ -128,12 +129,27 @@ public class Stat implements StatExtractor {
             schema.put(tableName, t);
 
         }
+        resultTables.close();
 
         return schema;
 
     }
 
-    /* private-helper methods */
+    private int getCount(String tableName) throws SQLException {
+    	String query1="select count(*) from "+tableName;
+    	Statement stmt1 = con.createStatement();
+        ResultSet rs1 = stmt1.executeQuery(query1);
+        int result=0;
+        while (rs1.next()) {
+        	result = rs1.getInt(1);
+        }
+        rs1.close();
+        stmt1.close();
+
+        return result;
+	}
+
+	/* private-helper methods */
     private int computeColumnSize(String columnName, int columnType, String table_sample)
         throws Exception {
         int columnSize = 0;

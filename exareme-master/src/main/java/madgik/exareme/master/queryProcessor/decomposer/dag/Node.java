@@ -254,7 +254,6 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 		while (!queue.isEmpty()) {
 			Node v = queue.getFirst();
 			// Update neighbors
-			if (!v.getChildren().isEmpty()) {
 				for (int i = 0; i < v.getChildren().size(); i++) {
 					Node c = v.getChildren().get(i);
 					queue.add(c);
@@ -266,7 +265,6 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 					result.append(";\n");
 				}
 
-			}
 			// else {
 			// result.append("type:"+v.type+" opCode:"+v.opCode+"
 			// object:"+v.o.toString());
@@ -715,9 +713,6 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 	}
 
 	public NodeInfo getNodeInfo() {
-		if(this.getObject().toString().startsWith("table70 ")&&nodeInfo!=null){
-			System.out.println(nodeInfo.getResultRel().getAttrIndex().get("wlbNpdidWellbore"));
-		}
 		return nodeInfo;
 		
 	}

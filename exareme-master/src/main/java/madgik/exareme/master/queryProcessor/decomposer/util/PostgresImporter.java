@@ -28,11 +28,11 @@ import madgik.exareme.master.queryProcessor.estimator.db.Schema;
 public class PostgresImporter {
 
 	public static void main(String[] args) throws Exception {
-		boolean importtables=true;
-		boolean analyze=false;
+		boolean importtables=false;
+		boolean analyze=true;
 		boolean analyzeSQLITE=false;
 		boolean vacuum = false;
-		String path="/media/dimitris/T/exaremetest/";
+		String path="/media/dimitris/T/exaremenpd100/";
 		DB dbinfo=new DB("ex");
 		dbinfo.setSchema("public");
 		dbinfo.setDriver("org.postgresql.Driver");
@@ -40,6 +40,13 @@ public class PostgresImporter {
 		dbinfo.setUser("postgres");
 		dbinfo.setMadisString("postgres h:localhost port:5432 u:postgres p:gray769watt724!@# db:npd_vig_scale1");
 		dbinfo.setURL("jdbc:postgresql://localhost/npd_vig_scale1");
+		DB dbinfo2=new DB("ex2");
+		dbinfo2.setSchema("lubm100");
+		dbinfo2.setDriver("com.mysql.jdbc.Driver");
+		dbinfo2.setPass("");
+		dbinfo2.setUser("root");
+		dbinfo2.setMadisString("mysql h:127.0.0.1 u:root db:lubm100");
+		dbinfo2.setURL("jdbc:mysql://127.0.0.1:3306/lubm100");
 		String url = "jdbc:postgresql://localhost/npd_vig_scale1";
 		Properties props = new Properties();
 		props.setProperty("user","postgres");
@@ -48,6 +55,13 @@ public class PostgresImporter {
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
 		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});
+		/*String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
+		Properties props = new Properties();
+		props.setProperty("user","root");
+		props.setProperty("password","");
+		Connection conn = DriverManager.getConnection(url, props);
+		DatabaseMetaData md = conn.getMetaData();
+		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});*/
 		while (rs.next()) {
 			String tablename=rs.getString(3);
 			//if(tablename.compareTo("field_reserves")<0){
@@ -58,7 +72,7 @@ public class PostgresImporter {
 			//}
 			SQLQuery s=new SQLQuery();
 			s.setFederated(true);
-			s.setMadisFunctionString("postgres h:localhost u:postres");
+			s.setMadisFunctionString("mysql h:localhost u:root");
 			s.setTemporaryTableName(tablename);
 			s.addInputTable(new Table(tablename, tablename));
 			ResultSet rs2 = md.getColumns(null, null, rs.getString(3), null);
@@ -92,7 +106,7 @@ public class PostgresImporter {
 	            	
 
 					OptiqueAnalyzer fa = new OptiqueAnalyzer(path, dbinfo);
-					fa.setUseDataImporter(true);
+					fa.setUseDataImporter(false);
 					System.out.println("analyzing: "+tablename);
 					Schema sch = fa.analyzeAttrs(tablename, attrs);
 					// change table name back to adding DB id

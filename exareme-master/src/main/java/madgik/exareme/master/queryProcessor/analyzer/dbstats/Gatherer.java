@@ -27,7 +27,7 @@ public class Gatherer {
     public Gatherer(String connString, String dbName) {
         this.connString = connString;
         this.dbName = dbName;
-        sch = "public";
+        sch = "lubm100";
     }
 
     public Map<String, Table> gather(String dbpath) throws Exception {

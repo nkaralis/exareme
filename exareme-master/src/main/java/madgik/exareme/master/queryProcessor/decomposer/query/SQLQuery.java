@@ -1169,6 +1169,9 @@ public class SQLQuery {
 				bwc = (NonUnaryWhereCondition) op;
 
 				if (bwc.getOperator().equals("or")) {
+					if(!bwc.referencesAtMostOneTable()){
+						 //if yes, leave as is, it will be pushed to a base table
+
 					for (List<Operand> tempResult : normalized) {
 						tempResult.remove(bwc);
 					}
@@ -1214,6 +1217,7 @@ public class SQLQuery {
 								nestedOr.add(br);
 							}
 						}
+					}
 					}
 
 					// in.add(left);
@@ -1299,6 +1303,13 @@ public class SQLQuery {
 		for (Operand op : conditions) {
 			if (op instanceof BinaryOperand) {
 				BinaryOperand bo = (BinaryOperand) op;
+				if(bo.getOperator().equalsIgnoreCase("and")){
+					List<Operand> nested=new ArrayList<Operand>();
+					nested.add(bo.getLeftOp());
+					nested.add(bo.getRightOp());
+					createNormalizedQueryForConditions(nested);
+					continue;
+				}
 				normalized.binaryWhereConditions
 						.add(new NonUnaryWhereCondition(bo.getLeftOp(), bo
 								.getRightOp(), bo.getOperator()));
@@ -1377,6 +1388,10 @@ public class SQLQuery {
 			normalized.unionAlias = this.unionAlias;
 			normalized.hasUnionRootNode = this.hasUnionRootNode;
 			normalized.partitionColumn = this.partitionColumn;
+			normalized.setGroupBy(this.groupBy);
+			normalized.setOrderBy(this.orderBy);
+			normalized.setLimit(this.limit);
+
 			// this.leftJoinTable = this.leftJoinTable;
 			// this.rightJoinTable = this.rightJoinTable;
 			// this.joinType = this.joinType;
@@ -2484,6 +2499,39 @@ public class SQLQuery {
 			createSipTables += c;
 		}
 
+	}
+
+	public String getMostProminentSipjoin(Set<String> keySet) {
+		if (this.sis != null) {
+			int min = this.getInputTables().size();
+			String result = null;
+			for (SipJoin sj : this.sis) {
+				if (sj.getNumber() < min) {
+					min = sj.getNumber();
+					result = sj.getSipName();
+				}
+				else if(keySet.contains(sj.getSipName())&&sj.getNumber()-3<min){
+					min = sj.getNumber()-3;
+					result = sj.getSipName();
+				}
+			}
+			return result;
+		}
+		return null;
+	}
+
+	public Set<Column> getAllJoinColumns() {
+		Set<Column> result=new HashSet<Column>();
+		for(NonUnaryWhereCondition nuwc:this.getBinaryWhereConditions()){
+			if(nuwc.getOperator().equals("=")){
+				if(!(nuwc.getLeftOp().getAllColumnRefs().isEmpty()||nuwc.getRightOp().getAllColumnRefs().isEmpty())){
+					result.add(nuwc.getLeftOp().getAllColumnRefs().get(0));
+					result.add(nuwc.getRightOp().getAllColumnRefs().get(0));
+					
+				}
+			}
+		}
+		return result;
 	}
 
 }

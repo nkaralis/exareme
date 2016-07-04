@@ -208,4 +208,18 @@ public class NonUnaryWhereCondition implements Operand {
 		return hash;
 	}
 	
+	public boolean referencesAtMostOneTable() {
+		List<Column> cols=this.getAllColumnRefs();
+		if(cols.isEmpty()){
+			return true;
+		}
+		String tableName=cols.get(0).getAlias();
+		for(int i=1;i<cols.size();i++){
+			if(!tableName.equals(cols.get(i).getAlias())){
+				return false;
+			}
+		}
+		return true;
+	}
+	
 }

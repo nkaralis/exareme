@@ -32,7 +32,8 @@ public class Util {
 		if (DecomposerUtils.RANDOM_TABLENAME_GENERATION) {
 			return UUID.randomUUID().toString().replace("-", "");
 		} else {
-			return String.valueOf(idCounter.getAndIncrement());
+			String a=String.valueOf(idCounter.getAndIncrement());
+			return a;
 		}
 	}
 

@@ -245,9 +245,13 @@ public class OptiqueAnalyzer {
     }
 
     public static int getCountFor(String tableName, String schema) throws Exception {
+    	/*if postgres
         String command =
             "echo \"select * from (" + madis + " select count(*) from " + schema + ".\\\"" + tableName
-                + "\\\"); " + "\" | " + PYTHON_PATH + " " + MADIS_PATH + " ";
+                + "\\\"); " + "\" | " + PYTHON_PATH + " " + MADIS_PATH + " ";*/
+    	String command =
+                "echo \"select * from (" + madis + " select count(*) from " +  tableName
+                    + "); " + "\" | " + PYTHON_PATH + " " + MADIS_PATH + " ";
         String[] cmd = {"/bin/sh", "-c", command};
         log.debug("executing:" + command);
         Process process = Runtime.getRuntime().exec(cmd);

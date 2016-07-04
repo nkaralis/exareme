@@ -21,6 +21,28 @@ public class SipStructure {
 		if (!(join.getLeftOp() instanceof Column && join.getRightOp() instanceof Column)) {
 			return;
 		}
+		add(left, right, p, set, join);
+		if(!left.getChildren().isEmpty()){
+			//if we have filter join also add the child node
+			for(Node n2:left.getChildren()){
+				if(n2.getChildren().size()==1&&n2.getObject() instanceof NonUnaryWhereCondition){
+					add(n2.getChildAt(0), right, p, set, join);
+				}
+			}
+		}
+		if(!left.getChildren().isEmpty()){
+			//if we have filter join add also the child node
+			for(Node n2:right.getChildren()){
+				if(n2.getChildren().size()==1&&n2.getObject() instanceof NonUnaryWhereCondition){
+					add(left, n2.getChildAt(0), p, set, join);
+				}
+			}
+		}
+		
+	}
+	
+
+	private void add(Node left, Node right, Projection p, Set<SipNode> set, NonUnaryWhereCondition join) {
 		SipInfo si = new SipInfo(p, join.getLeftOp().getAllColumnRefs().get(0), left);
 		boolean exists = false;
 		SipInfoValue siv = new SipInfoValue(right, si.AnonymizeColumns());
@@ -107,7 +129,7 @@ public class SipStructure {
 
 	public Table getSipName(Node op, Projection projection) {
 		for (SipInfo si : this.sipInfos.keySet()) {
-			if (si.getCounter() > 1 && si.getJoinNode().equals(op.getChildAt(0).getObject().toString())
+			if (si.getCounter() > 0 && si.getJoinNode().equals(op.getChildAt(0).getObject().toString())
 					|| si.getJoinNode().equals(op.getChildAt(1).getObject().toString())) {
 				return new Table(si.getName(), si.getName());
 			}
@@ -205,6 +227,31 @@ public class SipStructure {
 			s.add(siv);
 			sipInfos.put(si, s);
 			set.add(new SipNode(left, si));
+		}
+		
+	}
+
+
+
+
+	public void addToSipInfo(Projection p, CartesianSip cs, Set<SipNode> set) {
+		SipInfo si = new SipInfo(p, cs.getC(), cs.getCommon());
+		boolean exists = false;
+		SipInfoValue siv = new SipInfoValue(cs.getOther(), si.AnonymizeColumns());
+		for (SipInfo siKey : sipInfos.keySet()) {
+			if (siKey.equals(si)) {
+				Set<SipInfoValue> nodes = sipInfos.get(siKey);
+				nodes.add(siv);
+				set.add(new SipNode(cs.getOther(), siKey));
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			Set<SipInfoValue> s = new HashSet<SipInfoValue>();
+			s.add(siv);
+			sipInfos.put(si, s);
+			set.add(new SipNode(cs.getOther(), si));
 		}
 		
 	}

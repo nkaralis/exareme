@@ -91,7 +91,7 @@ public final class Histogram {
         double tuples = 0;
         for (Bucket b : this.bucketIndex.values()) {
             tuples += b.estimateBucketNumberOfTuples();
-            System.out.println(tuples);
+            //System.out.println(tuples);
         }
 
         return tuples;
@@ -202,8 +202,8 @@ public final class Histogram {
         
 
         if (!existsIntersection(h2)) {
-            System.out.println(this);
-            System.out.println(h2);
+           // System.out.println(this);
+           // System.out.println(h2);
             this.convertToTransparentHistogram();
         } else {
             Map<Double, Double> cbmap = this.combine(h2);
