@@ -2534,4 +2534,29 @@ public class SQLQuery {
 		return result;
 	}
 
+	public String getWhereSQL() {
+		StringBuffer result=new StringBuffer("");
+		String del="where \n";
+		if(!this.binaryWhereConditions.isEmpty()){
+			result.append(del);
+			del="";
+			String separator="";
+			for (NonUnaryWhereCondition wc : getBinaryWhereConditions()) {
+				result.append(separator);
+				result.append(wc.toString());
+				separator = " and \n";
+			}
+		}
+		if(!this.unaryWhereConditions.isEmpty()){
+			result.append(del);
+			for (UnaryWhereCondition wc : getUnaryWhereConditions()) {
+				String separator="";
+				result.append(separator);
+				result.append(wc.toString());
+				separator = " and \n";
+			}
+		}
+		return result.toString();
+	}
+
 }

@@ -62,7 +62,10 @@ public class Column implements Operand {
     @Override public int hashCode() {
        
         int hash = 31;
-        String aliasUp=this.tableAlias.toUpperCase();
+        String aliasUp=" ";
+        if(this.tableAlias!=null){
+        	aliasUp=this.tableAlias.toUpperCase();
+        }
         String nameUp=this.columnName.toUpperCase();
         
         int last=aliasUp.charAt(aliasUp.length()-1)+19;

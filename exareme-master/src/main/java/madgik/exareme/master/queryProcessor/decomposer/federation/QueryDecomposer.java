@@ -6,6 +6,7 @@ package madgik.exareme.master.queryProcessor.decomposer.federation;
 
 import madgik.exareme.common.schema.PhysicalTable;
 import madgik.exareme.master.queryProcessor.decomposer.DecomposerUtils;
+import madgik.exareme.master.queryProcessor.decomposer.ViewInfo;
 import madgik.exareme.master.queryProcessor.decomposer.dag.Node;
 import madgik.exareme.master.queryProcessor.decomposer.dag.NodeHashValues;
 import madgik.exareme.master.queryProcessor.decomposer.dag.PartitionCols;
@@ -179,6 +180,7 @@ public class QueryDecomposer {
 			initialQuery.renameTables(firstAliases);
 			ConjunctiveQueryDecomposer d = new ConjunctiveQueryDecomposer(initialQuery, centralizedExecution,
 					addNotNulls);
+			d.setViewInfos(viewinfos);
 			Node topSubquery = d.addCQToDAG(union, hashes);
 			// String u=union.dotPrint();
 			if (addAliases) {
@@ -468,6 +470,7 @@ public class QueryDecomposer {
 				List<String> firstAliases = aliases.get(0);
 				u.renameTables(firstAliases);
 				ConjunctiveQueryDecomposer d = new ConjunctiveQueryDecomposer(u, centralizedExecution, addNotNulls);
+				d.setViewInfos(viewinfos);
 				Node topSubquery = d.addCQToDAG(union, hashes);
 				// String u=union.dotPrint();
 				if (addAliases) {
@@ -1306,6 +1309,7 @@ public class QueryDecomposer {
 
 	int total = 0;
 	int pruned = 0;
+	private Map<String, Set<ViewInfo>> viewinfos;
 
 	private SinglePlan getBestPlan(Node e, Column c, double limit, double repCost,
 			EquivalentColumnClasses partitionRecord, Set<MemoKey> toMaterialize, Memo memo) {
@@ -2373,5 +2377,10 @@ public class QueryDecomposer {
 
 	public String getDotPrint() {
 		return root.dotPrint().toString();
+	}
+
+	public void setViewInfos(Map<String, Set<ViewInfo>> viewinfos) {
+		this.viewinfos=viewinfos;
+		
 	}
 }

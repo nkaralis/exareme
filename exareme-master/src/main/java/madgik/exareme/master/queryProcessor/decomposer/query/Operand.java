@@ -12,6 +12,7 @@ import com.google.common.hash.HashCode;
  * @author dimitris
  */
 public interface Operand extends Cloneable {
+	
 
     public List<Column> getAllColumnRefs();
 

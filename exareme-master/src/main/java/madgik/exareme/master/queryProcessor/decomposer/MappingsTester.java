@@ -1,6 +1,8 @@
 package madgik.exareme.master.queryProcessor.decomposer;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +19,10 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+
 import it.unibz.krdb.obda.model.Function;
 import it.unibz.krdb.obda.model.OBDAMappingAxiom;
 import it.unibz.krdb.obda.model.OBDASQLQuery;
@@ -27,8 +33,13 @@ import it.unibz.krdb.obda.model.impl.SQLQueryImpl;
 import it.unibz.krdb.obda.model.impl.VariableImpl;
 import it.unibz.krdb.obda.r2rml.R2RMLReader;
 import madgik.exareme.master.queryProcessor.decomposer.dag.NodeHashValues;
+import madgik.exareme.master.queryProcessor.decomposer.query.NonUnaryWhereCondition;
+import madgik.exareme.master.queryProcessor.decomposer.query.Operand;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQuery;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQueryParser;
+import madgik.exareme.master.queryProcessor.decomposer.query.UnaryWhereCondition;
+import madgik.exareme.master.queryProcessor.decomposer.util.InterfaceAdapter;
+import madgik.exareme.master.queryProcessor.decomposer.util.Util;
 import madgik.exareme.master.queryProcessor.estimator.NodeSelectivityEstimator;
 
 public class MappingsTester {
@@ -138,6 +149,7 @@ public class MappingsTester {
 			 }
 		 }
 		 NodeSelectivityEstimator nse = null;
+		 Map<String, Set<ViewInfo>> viewinfos=new HashMap<String, Set<ViewInfo>>(); 
 		 for(String sql:queryOutputs.keySet()){
 			 NodeHashValues hashes=new NodeHashValues();
 				
@@ -150,7 +162,7 @@ public class MappingsTester {
 				hashes.setSelectivityEstimator(nse);
 				try{
 					SQLQuery query = SQLQueryParser.parse(sql, hashes);
-					if(query.getInputTables().size()!=1){
+					if(query.getInputTables().size()!=1||!query.getGroupBy().isEmpty()||!query.getOrderBy().isEmpty()){
 						continue;
 					}
 					String table=query.getInputTables().get(0).getName();
@@ -158,13 +170,45 @@ public class MappingsTester {
 					for(Set<String> outputs:queryOutputs.get(sql)){
 						double dupl=nse.getDuplicateEstimation(table, outputs);
 						if(dupl>2){
+							String viewName=table+outputs.iterator().next()+Util.createUniqueId();
+							String colame=outputs.iterator().next();
+							System.out.println("from sql:"+sql);
 							System.out.println("table:"+table+" columns:"+outputs+" dupl. est."+dupl);
+							System.out.println("view sql: create table "+ viewName
+									+ " as select distinct "+colame+" from "+table+" "+query.getWhereSQL());
+							
+							Set<ViewInfo> viewsForTable=null;
+							if(viewinfos.containsKey(table)){
+								viewsForTable=viewinfos.get(table);
+							}
+							else{
+								viewsForTable=new HashSet<ViewInfo>();
+								viewinfos.put(table, viewsForTable);		
+							}
+							ViewInfo vi=new ViewInfo(viewName, colame);
+							viewsForTable.add(vi);
+							for(NonUnaryWhereCondition o:query.getBinaryWhereConditions()){
+								vi.addCondition(o);
+							}
+							for(UnaryWhereCondition o:query.getUnaryWhereConditions()){
+								vi.addCondition(o);
+							}
 						}
+						
+						Gson gson = new GsonBuilder().registerTypeAdapter(Operand.class, new InterfaceAdapter<Operand>())
+			                    .create();
+						java.lang.reflect.Type viewType=new TypeToken<Map<String, Set<ViewInfo>>>() {}.getType(); 
+				        String jsonStr = gson.toJson(viewinfos, viewType);
+
+				        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremelubm100/" + "views.json", "UTF-8");
+				        writer.println(jsonStr);
+				        writer.close();
 					}
 					
 				}
 				catch(Exception e){
-					
+					System.out.println(e.getMessage());
+					e.printStackTrace(System.out);
 				}
 		 }
 		 
