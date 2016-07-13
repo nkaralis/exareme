@@ -22,7 +22,7 @@ import madgik.exareme.jdbc.federated.AdpDriver;
 public class QueryTester {
 
 	public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
-		String dir="/home/dimitris/Dropbox/npdsql/existLast/";
+		String dir="/home/dimitris/Dropbox/npdsql/lubm/";
 		//String dir="/home/dimitris/sqlitenpd";
 		Map<String, String> queries=new HashMap<String, String>();
 		for(String file:readFilesFromDir(dir)){
@@ -31,11 +31,12 @@ public class QueryTester {
 		boolean postgres=false;
 		boolean exareme=true;
 		boolean sqlite=false;
+		boolean mysql=false;
 		
 		if(exareme){
 			//Driver test=new AdpDriver();
 			Class.forName("madgik.exareme.jdbc.federated.AdpDriver");
-			Connection connection=DriverManager.getConnection("jdbc:fedadp:http://127.0.0.1:9090/media/dimitris/T/exaremenpd100/");
+			Connection connection=DriverManager.getConnection("jdbc:fedadp:http://127.0.0.1:9090/media/dimitris/T/exaremelubm100/");
 			Statement s=connection.createStatement();
 			for(String file:queries.keySet()){
 				String query=queries.get(file);
@@ -77,6 +78,27 @@ public class QueryTester {
 			}
 			connection.close();
 		}
+		if(mysql){
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection connection = null;
+			connection = DriverManager.getConnection(
+			   "jdbc:mysql://127.0.0.1:3306/lubm100", "root", "");
+			Statement s=connection.createStatement();
+			for(String file:queries.keySet()){
+				String query=queries.get(file);
+				long t1=System.currentTimeMillis();
+				ResultSet rs=s.executeQuery(query);
+				int results=0;
+				while(rs.next()){
+					//Object a=rs.getObject(1);
+					results++;
+				}
+				rs.close();
+				System.out.println("Query "+file+ " executed in Mysql in "+ (System.currentTimeMillis()-t1) +" ms ");
+				System.out.println("No of results:"+results);
+			}
+			connection.close();
+		}
 		if(sqlite){
 			dir="/home/dimitris/sqlitenpd";
 			queries.clear();
@@ -89,7 +111,7 @@ public class QueryTester {
 			 //config.setPageSize(4096);
 			 //config.setLockingMode(mode);
 			 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
-			    dataSource.setUrl("jdbc:sqlite:/media/dimitris/T/exaremenpd100b/test2.db");
+			    dataSource.setUrl("jdbc:sqlite:/media/dimitris/T/tmp/test255.db");
 			    dataSource.setConfig(config);
 			Connection connection=dataSource.getConnection();//DriverManager.getConnection("jdbc:sqlite:test.db");
 
@@ -103,15 +125,16 @@ public class QueryTester {
 
 			Statement s=connection.createStatement();
 			//s.execute("PRAGMA cache_size = 600000");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/company.0.db' as company");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/strat_litho_wellbore_core.0.db' as strat_litho_wellbore_core");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/wellbore_core.0.db' as wellbore_core");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/wellbore_development_all.0.db' as wellbore_development_all");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/wellbore_exploration_all.0.db' as wellbore_exploration_all");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/wellbore_npdid_overview.0.db' as wellbore_npdid_overview");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/wellbore_shallow_all.0.db' as wellbore_shallow_all");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/discovery.0.db' as discovery");
-			s.execute("attach database '/media/dimitris/T/exaremenpd100c/field.0.db' as field");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/company.0.db' as company");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/licence.0.db' as licence");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/strat_litho_wellbore_core.0.db' as strat_litho_wellbore_core");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/wellbore_core.0.db' as wellbore_core");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/wellbore_development_all.0.db' as wellbore_development_all");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/wellbore_exploration_all.0.db' as wellbore_exploration_all");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/wellbore_npdid_overview.0.db' as wellbore_npdid_overview");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/wellbore_shallow_all.0.db' as wellbore_shallow_all");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/discovery.0.db' as discovery");
+			s.execute("attach database '/media/dimitris/T/exaremenpd100/field.0.db' as field");
 			
 			
 			
@@ -157,11 +180,11 @@ public class QueryTester {
     	File[] listOfFiles = folder.listFiles();
     	List<String> files=new ArrayList<String>();
     	    for (int i = 0; i < listOfFiles.length; i++) {
-    	      if (listOfFiles[i].isFile()&&listOfFiles[i].getCanonicalPath().endsWith("12.q.sql.100")) {
+    	      if (listOfFiles[i].isFile()&&listOfFiles[i].getCanonicalPath().endsWith("q.sql")) {
     	    	  //if(listOfFiles[i].getCanonicalPath().endsWith("30.q.sql"))
     	    	//	  continue;
-    	    	 // if(listOfFiles[i].getCanonicalPath().endsWith("06.q.sql"))
-    	    	//	  continue;
+    	    	 // if(listOfFiles[i].getCanonicalPath().endsWith("m2.q.sql"))
+    	    		//  continue;
     	    	  files.add(listOfFiles[i].getCanonicalPath());
     	      }
     	    }

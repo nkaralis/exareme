@@ -29,7 +29,7 @@ public class SinlgePlanDFLGenerator {
 	private boolean useSIP;
 	private SipStructure sipStruct;
 	private final boolean useCache = AdpDBProperties.getAdpDBProps().getBoolean("db.cache");
-	private boolean addIndicesToMatQueries = true;
+	private boolean addIndicesToMatQueries = false;
 	private SipToUnions sipToUnions;
 	private String unionNo;
 
@@ -113,7 +113,7 @@ public class SinlgePlanDFLGenerator {
 			for (int i = 0; i < qs.size() - 1; i++) {
 				SQLQuery q = qs.get(i);
 
-				for (Column c : q.getAllColumns()) {
+				for (Column c : q.getAllColumnsSip()) {
 					if (correspondingCols.keySet().contains(c)) {
 						Column cor = correspondingCols.get(c);
 						c.setName(cor.getName());
@@ -175,17 +175,31 @@ public class SinlgePlanDFLGenerator {
 		}
 
 		if (DecomposerUtils.REMOVE_OUTPUTS) {
-			for (int i = 0; i < qs.size() - 1; i++) {
-				SQLQuery q = qs.get(i);
-				if (q.isNested() && qs.size() > 1) {
+			log.debug("Removing Outputs...");
+			if (qs.size() > 1) {
+				List<SQLQuery> unions = qs.get(qs.size() - 1).getUnionqueries();
+				for (int i = qs.size() - 2; i > -1; i--) {
+
+					SQLQuery q = qs.get(i);
+					if (unions.contains(q)) {
+						continue;
+					}
 					List<Column> outputs = new ArrayList<Column>();
 					for (Output o : q.getOutputs()) {
 						outputs.add(new Column(q.getTemporaryTableName(), o.getOutputName()));
 					}
-					for (int j = i + 1; j < qs.size(); j++) {
+					for (int j = qs.size() - 1; j > i; j--) {
+						if(qs.get(j).getOutputs().isEmpty()&&qs.get(j).containsIputTable(q.getTemporaryTableName())){
+							outputs.clear();
+							break;
+						}
 						List<Column> cols = qs.get(j).getAllColumns();
 						for (Column c2 : cols) {
-							outputs.remove(new Column(c2.getAlias(), c2.getBaseTable() + "_" + c2.getName()));
+							if (c2.getBaseTable() != null) {
+								outputs.remove(new Column(c2.getAlias(), c2.getBaseTable() + "_" + c2.getName()));
+							} else {
+								outputs.remove(c2);
+							}
 						}
 						if (outputs.isEmpty()) {
 							break;

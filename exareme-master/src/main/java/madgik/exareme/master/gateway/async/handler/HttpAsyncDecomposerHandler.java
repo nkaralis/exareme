@@ -1,6 +1,8 @@
 package madgik.exareme.master.gateway.async.handler;
 
+import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import madgik.exareme.master.client.AdpDBClient;
 import madgik.exareme.master.client.AdpDBClientFactory;
@@ -16,15 +18,18 @@ import madgik.exareme.master.gateway.ExaremeGatewayUtils;
 import madgik.exareme.master.queryProcessor.analyzer.fanalyzer.OptiqueAnalyzer;
 import madgik.exareme.master.queryProcessor.analyzer.stat.StatUtils;
 import madgik.exareme.master.queryProcessor.decomposer.DecomposerUtils;
+import madgik.exareme.master.queryProcessor.decomposer.ViewInfo;
 import madgik.exareme.master.queryProcessor.decomposer.dag.NodeHashValues;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoReaderDB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoWriterDB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.NamesToAliases;
 import madgik.exareme.master.queryProcessor.decomposer.federation.QueryDecomposer;
+import madgik.exareme.master.queryProcessor.decomposer.query.Operand;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQuery;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQueryParser;
 import madgik.exareme.master.queryProcessor.decomposer.query.Table;
+import madgik.exareme.master.queryProcessor.decomposer.util.InterfaceAdapter;
 import madgik.exareme.master.queryProcessor.estimator.NodeSelectivityEstimator;
 import madgik.exareme.master.queryProcessor.estimator.db.Schema;
 import madgik.exareme.worker.art.registry.ArtRegistryLocator;
@@ -38,7 +43,9 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -433,11 +440,24 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							path += "/";
 						}
 						NodeSelectivityEstimator nse = null;
+						Map<String, Set<ViewInfo>> viewinfos = new HashMap<String, Set<ViewInfo>>();
 						try {
 							nse = new NodeSelectivityEstimator(path + "histograms.json");
+							BufferedReader br;
+							br = new BufferedReader(new FileReader("/media/dimitris/T/exaremelubm100/" + "views.json"));
+
+							// convert the json string back to object
+							// Gson gson = new Gson();
+							Gson gson = new GsonBuilder().registerTypeAdapter(Operand.class, new InterfaceAdapter<Operand>()).create();
+							java.lang.reflect.Type viewType = new TypeToken<Map<String, Set<ViewInfo>>>() {
+							}.getType();
+							viewinfos = gson.fromJson(br, viewType);
 						} catch (Exception e) {
 							log.error("Cannot read statistics. " + e.getMessage());
 						}
+						
+						
+						
 						List<SQLQuery> subqueries = new ArrayList<SQLQuery>();
 						SQLQuery squery;
 						try {
@@ -446,6 +466,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							hashes.setSelectivityEstimator(nse);
 							squery = SQLQueryParser.parse(query, hashes);
 							QueryDecomposer d = new QueryDecomposer(squery, path, workers, hashes);
+							d.setViewInfos(viewinfos);
 							if(DecomposerUtils.WRITE_ALIASES){
 							n2a=DBInfoReaderDB.readAliases(path);}
 							d.setN2a(n2a);

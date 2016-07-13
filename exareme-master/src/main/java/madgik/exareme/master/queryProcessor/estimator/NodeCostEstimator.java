@@ -94,7 +94,7 @@ public class NodeCostEstimator {
 
     public static double estimateFilter(Node n) {
     	//if it's not on base relation return 0
-    	if(n.getChildAt(0).getChildAt(0).getOpCode()!=Node.BASEPROJECT){
+    	if(!n.getChildAt(0).getChildren().isEmpty() && n.getChildAt(0).getChildAt(0).getOpCode()!=Node.BASEPROJECT){
     		return 0;
     	}
     	else{
@@ -118,8 +118,11 @@ public class NodeCostEstimator {
     			 return (n.getNodeInfo().outputRelSize() / Metadata.PAGE_SIZE) * Metadata.PAGE_IO_TIME;
     		}
     		else{
+    			Node base=n.getChildAt(0);
     			//cost is all the no of pages in the relation
-    			Node base=n.getChildAt(0).getChildAt(0).getChildAt(0);
+    			if(!base.getChildren().isEmpty()){
+    				base=n.getChildAt(0).getChildAt(0).getChildAt(0);
+    			}
     			return (base.getNodeInfo().outputRelSize() / Metadata.PAGE_SIZE) * Metadata.PAGE_IO_TIME;
     			
     		}

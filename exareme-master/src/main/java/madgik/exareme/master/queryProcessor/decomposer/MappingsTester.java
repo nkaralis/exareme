@@ -49,7 +49,8 @@ public class MappingsTester {
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = null;
 		try {
-			ontology = manager.loadOntologyFromOntologyDocument(new File("/home/dimitris/ontopv1/iswc2014-benchmark/LUBM/univ-benchQL.owl"));
+			//ontology = manager.loadOntologyFromOntologyDocument(new File("/home/dimitris/ontopv1/iswc2014-benchmark/LUBM/univ-benchQL.owl"));
+			ontology = manager.loadOntologyFromOntologyDocument(new File("/home/dimitris/ontopv1/npd-benchmark/ontology/npd-v2-ql.owl"));
 		} catch (OWLOntologyCreationException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -79,7 +80,8 @@ public class MappingsTester {
 			}
 		}
 		
-		String obdafile="/home/dimitris/ontopv1/iswc2014-benchmark/LUBM/univ-benchQL.ttl";
+		//String obdafile="/home/dimitris/ontopv1/iswc2014-benchmark/LUBM/univ-benchQL.ttl";
+		String obdafile="/home/dimitris/ontopv1/npd-benchmark/mappings/postgres/npd-v2-ql-postgres.ttl";
 		R2RMLReader reader=null;
 		try {
 			reader = new R2RMLReader(obdafile);
@@ -155,7 +157,7 @@ public class MappingsTester {
 				
 				
 				try {
-					nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremelubm100/" + "histograms.json");
+					nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremenpd100/" + "histograms.json");
 				} catch (Exception e) {
 					
 				}
@@ -169,7 +171,7 @@ public class MappingsTester {
 					
 					for(Set<String> outputs:queryOutputs.get(sql)){
 						double dupl=nse.getDuplicateEstimation(table, outputs);
-						if(dupl>2){
+						if(dupl>1.2){
 							String viewName=table+outputs.iterator().next()+Util.createUniqueId();
 							String colame=outputs.iterator().next();
 							System.out.println("from sql:"+sql);
@@ -200,7 +202,7 @@ public class MappingsTester {
 						java.lang.reflect.Type viewType=new TypeToken<Map<String, Set<ViewInfo>>>() {}.getType(); 
 				        String jsonStr = gson.toJson(viewinfos, viewType);
 
-				        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremelubm100/" + "views.json", "UTF-8");
+				        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremenpd100/" + "views.json", "UTF-8");
 				        writer.println(jsonStr);
 				        writer.close();
 					}

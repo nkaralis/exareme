@@ -6,8 +6,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -166,7 +168,51 @@ public class DemoDAG {
 			java.lang.reflect.Type viewType = new TypeToken<Map<String, Set<ViewInfo>>>() {
 			}.getType();
 			viewinfos = gson.fromJson(br, viewType);
+			/*System.out.println(viewinfos);
+			for(Set<ViewInfo> vi:viewinfos.values()){
+				Set<ViewInfo> toAdd=new HashSet<ViewInfo>();
+				ViewInfo[] viewArray = vi.toArray(new ViewInfo[vi.size()]);
+				int initialSize=vi.size();
+				for(int i=0;i<initialSize;i++){
+					ViewInfo info=viewArray[i];
+					if(info==null){
+						continue;
+					}
+					ViewInfo combined=new ViewInfo(info.getTableName()+"all", info.getOutput());
+					boolean add=false;
+					if(info.getNumberOfConditions()!=1){
+						continue;
+					}
+					combined.addConditions(info);
+					
+					for(int j=i+1;j<initialSize;j++){
+						ViewInfo info2=viewArray[j];
+						if(info2==null){
+							continue;
+						}
+						if(info2.getOutput().equals(info.getOutput()) && info2.getNumberOfConditions()==1){
+							combined.addConditions(info2);
+							add=true;
+							
+							viewArray[j]=null;
+						}
+					}
+					if(add){
+						toAdd.add(combined);
+					}
+					viewArray[i]=null;
+				}
+				for(ViewInfo vi2:toAdd){
+					vi2.setOr(true);
+					vi.add(vi2);
+				}
+			}
+			String jsonStr = gson.toJson(viewinfos, viewType);
 
+	        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremelubm100/" + "views.json.bak", "UTF-8");
+	        writer.println(jsonStr);
+	        writer.close();
+*/
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
@@ -203,7 +249,7 @@ public class DemoDAG {
 		File[] listOfFiles = folder.listFiles();
 		List<String> files = new ArrayList<String>();
 		for (int i = 0; i < listOfFiles.length; i++) {
-			if (listOfFiles[i].isFile() && listOfFiles[i].getCanonicalPath().endsWith("lubm2.q.sql")) {
+			if (listOfFiles[i].isFile() && listOfFiles[i].getCanonicalPath().endsWith("q.sql")) {
 				files.add(listOfFiles[i].getCanonicalPath());
 			}
 		}

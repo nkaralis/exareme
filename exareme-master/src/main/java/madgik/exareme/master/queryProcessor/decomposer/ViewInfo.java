@@ -12,6 +12,7 @@ public class ViewInfo {
 	private Set<UnaryWhereCondition> unaryConditions;
 	private Set<NonUnaryWhereCondition> binaryConditions;
 	private String viewName;
+	private boolean or;
 
 	public ViewInfo(String name, String outColumn) {
 		super();
@@ -19,6 +20,7 @@ public class ViewInfo {
 		this.outColumn = outColumn;
 		unaryConditions = new HashSet<UnaryWhereCondition>();
 		binaryConditions = new HashSet<NonUnaryWhereCondition>();
+		or=false;
 	}
 
 	public boolean addCondition(Object toAdd) {
@@ -94,7 +96,32 @@ public class ViewInfo {
 	}
 
 	public int getNumberOfConditions() {
-		return unaryConditions.size()+binaryConditions.size();
+		if(this.or){
+			return 1;
+		}
+		else{
+			return unaryConditions.size()+binaryConditions.size();
+		}
 	}
+
+	public void addConditions(ViewInfo other) {
+		this.binaryConditions.addAll(other.binaryConditions);
+		this.unaryConditions.addAll(other.unaryConditions);
+		
+	}
+
+	public boolean isOr() {
+		return or;
+	}
+
+	public void setOr(boolean or) {
+		this.or = or;
+	}
+
+	public boolean orsAreEqual(Set<NonUnaryWhereCondition> ors) {
+		return ors.equals(this.binaryConditions);
+	}
+	
+	
 
 }

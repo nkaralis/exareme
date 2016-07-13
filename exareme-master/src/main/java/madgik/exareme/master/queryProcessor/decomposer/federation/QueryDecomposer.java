@@ -973,7 +973,7 @@ public class QueryDecomposer {
 										Node table = new Node(Node.OR);
 										table.setObject(new Table("table" + Util.createUniqueId(), null));
 
-										if (hashes.containsKey(associativity.getHashId())) {
+										if (hashes.containsKey(associativity.getHashId())&&!hashes.get(associativity.getHashId()).getParents().isEmpty()) {
 											Node assocInHashes = hashes.get(associativity.getHashId());
 											table = assocInHashes.getFirstParent();
 											if (useGreedy) {

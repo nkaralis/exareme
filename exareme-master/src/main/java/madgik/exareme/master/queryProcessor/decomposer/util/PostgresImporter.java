@@ -32,7 +32,7 @@ public class PostgresImporter {
 		boolean analyze=true;
 		boolean analyzeSQLITE=false;
 		boolean vacuum = false;
-		String path="/media/dimitris/T/exaremenpd100/";
+		String path="/media/dimitris/T/exaremelubm100/";
 		DB dbinfo=new DB("ex");
 		dbinfo.setSchema("public");
 		dbinfo.setDriver("org.postgresql.Driver");
@@ -47,21 +47,21 @@ public class PostgresImporter {
 		dbinfo2.setUser("root");
 		dbinfo2.setMadisString("mysql h:127.0.0.1 u:root db:lubm100");
 		dbinfo2.setURL("jdbc:mysql://127.0.0.1:3306/lubm100");
-		String url = "jdbc:postgresql://localhost/npd_vig_scale1";
+		/*String url = "jdbc:postgresql://localhost/npd_vig_scale1";
 		Properties props = new Properties();
 		props.setProperty("user","postgres");
 		props.setProperty("password","gray769watt724!@#");
 		props.setProperty("ssl","true");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});
-		/*String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
+		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});*/
+		String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
 		Properties props = new Properties();
 		props.setProperty("user","root");
 		props.setProperty("password","");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});*/
+		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});
 		while (rs.next()) {
 			String tablename=rs.getString(3);
 			//if(tablename.compareTo("field_reserves")<0){
@@ -103,8 +103,9 @@ public class PostgresImporter {
 				es.awaitTermination(40, TimeUnit.MINUTES);
 	            }
 	            if(analyze){
-	            	
-
+	            	tablename="teachersdocD34095a8bedf4480491c70a48a17e24abal";
+	            	attrs.clear();
+	            	attrs.add("docD");
 					OptiqueAnalyzer fa = new OptiqueAnalyzer(path, dbinfo);
 					fa.setUseDataImporter(false);
 					System.out.println("analyzing: "+tablename);
@@ -112,6 +113,7 @@ public class PostgresImporter {
 					// change table name back to adding DB id
 					
 					StatUtils.addSchemaToFile(path + "histograms.json", sch);
+					break;
 	            }
 	            if(analyzeSQLITE){
 	            	Class.forName("org.sqlite.JDBC");

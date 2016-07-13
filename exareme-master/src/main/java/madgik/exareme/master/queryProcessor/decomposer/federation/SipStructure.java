@@ -22,25 +22,24 @@ public class SipStructure {
 			return;
 		}
 		add(left, right, p, set, join);
-		if(!left.getChildren().isEmpty()){
-			//if we have filter join also add the child node
-			for(Node n2:left.getChildren()){
-				if(n2.getChildren().size()==1&&n2.getObject() instanceof NonUnaryWhereCondition){
+		if (!left.getChildren().isEmpty()) {
+			// if we have filter join also add the child node
+			for (Node n2 : left.getChildren()) {
+				if (n2.getChildren().size() == 1 && n2.getObject() instanceof NonUnaryWhereCondition) {
 					add(n2.getChildAt(0), right, p, set, join);
 				}
 			}
 		}
-		if(!left.getChildren().isEmpty()){
-			//if we have filter join add also the child node
-			for(Node n2:right.getChildren()){
-				if(n2.getChildren().size()==1&&n2.getObject() instanceof NonUnaryWhereCondition){
+		if (!left.getChildren().isEmpty()) {
+			// if we have filter join add also the child node
+			for (Node n2 : right.getChildren()) {
+				if (n2.getChildren().size() == 1 && n2.getObject() instanceof NonUnaryWhereCondition) {
 					add(left, n2.getChildAt(0), p, set, join);
 				}
 			}
 		}
-		
+
 	}
-	
 
 	private void add(Node left, Node right, Projection p, Set<SipNode> set, NonUnaryWhereCondition join) {
 		SipInfo si = new SipInfo(p, join.getLeftOp().getAllColumnRefs().get(0), left);
@@ -83,8 +82,8 @@ public class SipStructure {
 	}
 
 	public void removeNotNeededSIPs() {
-		//System.out.println(sipInfos);
-		System.out.println("original sip size:"+sipInfos.size());
+		// System.out.println(sipInfos);
+		System.out.println("original sip size:" + sipInfos.size());
 		Set<SipInfo> toRemove = new HashSet<SipInfo>();
 		for (SipInfo si : this.sipInfos.keySet()) {
 			if (sipInfos.get(si).size() == 1) {
@@ -94,7 +93,7 @@ public class SipStructure {
 		for (SipInfo si : toRemove) {
 			sipInfos.remove(si);
 		}
-		System.out.println("sip size:"+sipInfos.size());
+		System.out.println("sip size:" + sipInfos.size());
 	}
 
 	public void markSipUsed(Projection p, Node n) {
@@ -166,29 +165,31 @@ public class SipStructure {
 		if (!(join.getLeftOp() instanceof Column && join.getRightOp() instanceof Column)) {
 			return;
 		}
-		if(!(nuwc.getLeftOp() instanceof Column && nuwc.getRightOp() instanceof Column)) {
+		if (!(nuwc.getLeftOp() instanceof Column && nuwc.getRightOp() instanceof Column)) {
 			return;
 		}
-		Column rightFilterColumn=null;
-		Column leftFilterColumn=null;
-		if(right.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())){
-			rightFilterColumn=nuwc.getLeftOp().getAllColumnRefs().get(0);
+		Column rightFilterColumn = null;
+		Column leftFilterColumn = null;
+		if (!join.equals(nuwc)) {
+			if (right.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn = nuwc.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn = nuwc.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (right.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn = nuwc.getRightOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn = nuwc.getRightOp().getAllColumnRefs().get(0);
+			}
 		}
-		if(left.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())){
-			leftFilterColumn=nuwc.getLeftOp().getAllColumnRefs().get(0);
-		}
-		if(right.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())){
-			rightFilterColumn=nuwc.getRightOp().getAllColumnRefs().get(0);
-		}
-		if(left.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())){
-			leftFilterColumn=nuwc.getRightOp().getAllColumnRefs().get(0);
-		}
-		//if(leftFilterColumn==null || rightFilterColumn==null){
-			//return;
-		//}
+		// if(leftFilterColumn==null || rightFilterColumn==null){
+		// return;
+		// }
 		SipInfo si = new SipInfo(p, join.getLeftOp().getAllColumnRefs().get(0), left);
-		if(leftFilterColumn!=null && rightFilterColumn!=null){
-		si.addJoinCol(leftFilterColumn);
+		if (leftFilterColumn != null && rightFilterColumn != null) {
+			si.addJoinCol(leftFilterColumn);
 		}
 		boolean exists = false;
 		SipInfoValue siv = new SipInfoValue(right, si.AnonymizeColumns());
@@ -209,8 +210,8 @@ public class SipStructure {
 		}
 		exists = false;
 		si = new SipInfo(p, join.getRightOp().getAllColumnRefs().get(0), right);
-		if(leftFilterColumn!=null && rightFilterColumn!=null){
-		si.addJoinCol(rightFilterColumn);
+		if (leftFilterColumn != null && rightFilterColumn != null) {
+			si.addJoinCol(rightFilterColumn);
 		}
 		siv = new SipInfoValue(left, si.AnonymizeColumns());
 		for (SipInfo siKey : sipInfos.keySet()) {
@@ -228,11 +229,8 @@ public class SipStructure {
 			sipInfos.put(si, s);
 			set.add(new SipNode(left, si));
 		}
-		
+
 	}
-
-
-
 
 	public void addToSipInfo(Projection p, CartesianSip cs, Set<SipNode> set) {
 		SipInfo si = new SipInfo(p, cs.getC(), cs.getCommon());
@@ -253,9 +251,7 @@ public class SipStructure {
 			sipInfos.put(si, s);
 			set.add(new SipNode(cs.getOther(), si));
 		}
-		
-	}
 
-	
+	}
 
 }

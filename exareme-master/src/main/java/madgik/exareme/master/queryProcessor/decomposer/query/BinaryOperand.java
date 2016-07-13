@@ -130,5 +130,45 @@ public class BinaryOperand implements Operand {
 			return false;
 		return true;
 	}
+
+	public Set<NonUnaryWhereCondition> getOrConditions() {
+		Set<NonUnaryWhereCondition> result = new HashSet<NonUnaryWhereCondition>();
+		if (this.operator.equals("=")) {
+			if((this.getLeftOp() instanceof Column||this.getLeftOp() instanceof Constant)&&
+					(this.getRightOp() instanceof Column||this.getRightOp() instanceof Constant)){
+			result.add(new NonUnaryWhereCondition(this.getLeftOp(), this.getRightOp(), "="));
+			return result;}
+			else{
+				return null;
+			}
+		} else if (this.operator.equalsIgnoreCase("OR") && (this.getLeftOp() instanceof NonUnaryWhereCondition
+				||this.getLeftOp() instanceof BinaryOperand)
+				&& (this.getRightOp() instanceof NonUnaryWhereCondition) ||this.getRightOp() instanceof BinaryOperand){
+			Set<NonUnaryWhereCondition> left = null;
+			if(this.getLeftOp() instanceof NonUnaryWhereCondition){
+				left=((NonUnaryWhereCondition) this.getLeftOp()).getOrConditions();
+			}
+			else if(this.getLeftOp() instanceof BinaryOperand){
+				left=((BinaryOperand) this.getLeftOp()).getOrConditions();
+			}
+			if (left == null)
+				return null;
+			Set<NonUnaryWhereCondition> right =  null;
+			if(this.getRightOp() instanceof NonUnaryWhereCondition){
+				right=((NonUnaryWhereCondition) this.getRightOp()).getOrConditions();
+			}
+			else if(this.getLeftOp() instanceof BinaryOperand){
+				right=((BinaryOperand) this.getRightOp()).getOrConditions();
+			}
+			if (right == null)
+				return null;
+			result.addAll(left);
+			result.addAll(right);
+			return result;
+		} else {
+			return null;
+		}
+
+	}
 	
 }
