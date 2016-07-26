@@ -7,6 +7,7 @@ package madgik.exareme.master.queryProcessor.decomposer.dag;
 import madgik.exareme.master.queryProcessor.decomposer.query.Column;
 import madgik.exareme.master.queryProcessor.decomposer.query.NonUnaryWhereCondition;
 import madgik.exareme.master.queryProcessor.decomposer.query.Operand;
+import madgik.exareme.master.queryProcessor.decomposer.query.Selection;
 import madgik.exareme.master.queryProcessor.decomposer.query.Table;
 import madgik.exareme.master.queryProcessor.decomposer.util.Pair;
 import madgik.exareme.master.queryProcessor.estimator.NodeInfo;
@@ -143,6 +144,8 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 		for (Node c : this.children) {
 			codes.add(c.getHashId());
 		}
+
+
 		if (o instanceof Table) {
 			Table t = (Table) o;
 			if (!t.getName().startsWith("table")) {
@@ -808,7 +811,23 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 		return "Node [opCode=" + opCode + ", o=" + o + "]";
 	}
 
-
+	public void printHashes(int i){
+		
+		for(int j=0;j<i;j++){
+			System.out.print(" ");
+		}
+		System.out.println(this.o.toString());
+		for(int j=0;j<i;j++){
+			System.out.print(" ");
+		}
+		System.out.println("hash "+this.getHashId());
+		for(int k=0;k<children.size();k++){
+			if(!children.get(k).descendantBaseTables.contains("alias1"))
+				continue;
+			children.get(k).printHashes(i+1);
+			break;
+		}
+	}
 	
 	
 

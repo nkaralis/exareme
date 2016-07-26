@@ -254,4 +254,29 @@ public class SipStructure {
 
 	}
 
+	public void addToSipInfo(Projection p, Set<SipNode> set, Node other) {
+		//query without any join
+		Node empty=new Node(Node.OR);
+		empty.setObject("empty");
+		SipInfo si = new SipInfo(p, null, empty);
+		boolean exists = false;
+		SipInfoValue siv = new SipInfoValue(other, si.AnonymizeColumns());
+		for (SipInfo siKey : sipInfos.keySet()) {
+			if (siKey.equals(si)) {
+				Set<SipInfoValue> nodes = sipInfos.get(siKey);
+				nodes.add(siv);
+				set.add(new SipNode(other, siKey));
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			Set<SipInfoValue> s = new HashSet<SipInfoValue>();
+			s.add(siv);
+			sipInfos.put(si, s);
+			set.add(new SipNode(other, si));
+		}
+		
+	}
+
 }

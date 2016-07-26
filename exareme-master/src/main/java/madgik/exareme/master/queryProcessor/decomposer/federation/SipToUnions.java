@@ -41,5 +41,20 @@ public class SipToUnions {
 		}
 		return result;
 	}
+	
+	public Set<SipNode> getSipInfo(String unionNo, Node base, boolean isbase) {
+		Set<SipNode> result=new HashSet<SipNode>();
+		Set<SipNode> unionSip = sipToUnions.get(unionNo);
+		if (unionSip != null) {
+			for (SipNode sn : unionSip) {
+				if (sn.getNode().equals(base)) {
+					result.add(sn);
+					//break;
+				}
+				
+			}
+		}
+		return result;
+	}
 
 }

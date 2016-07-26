@@ -43,9 +43,9 @@ public class ConjunctiveQueryDecomposer {
 	private boolean centralizedExecution;
 	private static final boolean useGreedy = true;
 	private static int counter = 0;
-	private static boolean removeReduntantSelfJoins = false;
-	private static boolean checkViews = false;
-	Map<String, Set<ViewInfo>> viewinfos=null;
+	private static boolean removeReduntantSelfJoins = true;
+	private static boolean checkViews = true;
+	Map<String, Set<ViewInfo>> viewinfos = null;
 	// private boolean mergeSelections;
 	// private static int counter=0;
 	private static final Logger log = Logger.getLogger(ConjunctiveQueryDecomposer.class);
@@ -61,7 +61,7 @@ public class ConjunctiveQueryDecomposer {
 		 * { this.initialQuery.setFederated(true); if
 		 * (!dbs.contains(t.getDBName())) { dbs.add(t.getDBName()); } } }
 		 */
-		
+
 		this.centralizedExecution = centralized;
 		if (addRedundantIsNotNull) {
 			for (int i = 0; i < this.initialQuery.getUnaryWhereConditions().size(); i++) {
@@ -147,7 +147,7 @@ public class ConjunctiveQueryDecomposer {
 			}
 		}
 		if (removeReduntantSelfJoins) {
-			long timeStart=System.currentTimeMillis();
+			long timeStart = System.currentTimeMillis();
 			Map<String, List<Table>> sameTables = new HashMap<String, List<Table>>();
 			for (Table t : this.getInputTables()) {
 				if (sameTables.containsKey(t.getName())) {
@@ -165,17 +165,6 @@ public class ConjunctiveQueryDecomposer {
 					for (int i = 0; i < l.size(); i++) {
 						Table reduntant = l.get(i);
 						boolean isnot = false;
-						// first check that there is no ref the table in output
-						// to change to take into consideration column eq.!!
-						for (Column c : this.initialQuery.getAllOutputColumns()) {
-							if (c.getAlias().equals(reduntant.getAlias())) {
-								isnot = true;
-								break;
-							}
-						}
-						if (isnot) {
-							continue;
-						}
 
 						if (columnEquivalences.isEmpty()) {
 							computeColumnEquivalences(columnEquivalences, tablesWithInequalityCondition);
@@ -203,7 +192,7 @@ public class ConjunctiveQueryDecomposer {
 							for (UnaryWhereCondition uwc : this.initialQuery.getUnaryWhereConditions()) {
 								Column c = uwc.getAllColumnRefs().get(0);
 								if (c.getAlias().equals(reduntant.getAlias())) {
-									UnaryWhereCondition cloned=null;
+									UnaryWhereCondition cloned = null;
 									try {
 										cloned = uwc.clone();
 									} catch (CloneNotSupportedException e) {
@@ -221,19 +210,72 @@ public class ConjunctiveQueryDecomposer {
 								}
 							}
 
+							for (Column c : this.initialQuery.getAllOutputColumns()) {
+								if (c.getAlias().equals(reduntant.getAlias())) {
+									if (!columnEquivalences.getClassForColumn(c)
+											.contains(new Column(coveringTable.getAlias(), c.getName()))) {
+										isnot = true;
+										break;
+									}
+								}
+							}
+							if (isnot) {
+								continue;
+							}
+
 							// coveringTable is really covering reduntant {
 							System.out.println("removing....");
 							for (int ci = 0; ci < initialQuery.getBinaryWhereConditions().size(); ci++) {
-								
-								NonUnaryWhereCondition nuwc = initialQuery.getBinaryWhereConditions().get(ci);								
-								for (Column c : nuwc.getAllColumnRefs()) {
+
+								NonUnaryWhereCondition nuwcCloned = initialQuery.getBinaryWhereConditions().get(ci)
+										.clone();
+								boolean changed = false;
+								for (Column c : nuwcCloned.getAllColumnRefs()) {
 									if (c.getAlias().equals(reduntant.getAlias())) {
-										nuwc.changeColumn(c, new Column(coveringTable.getAlias(), c.getName()));
+										nuwcCloned.changeColumn(c, new Column(coveringTable.getAlias(), c.getName()));
+										changed = true;
 									}
 
 								}
-								if(nuwc.getOperator().equals("=")&&nuwc.getLeftOp().equals(nuwc.getRightOp())){
+								if (!changed) {
+									continue;
+								}
+								if (nuwcCloned.getOperator().equals("=")
+										&& nuwcCloned.getLeftOp().equals(nuwcCloned.getRightOp())) {
 									initialQuery.getBinaryWhereConditions().remove(ci);
+									ci--;
+								} else if (initialQuery.getBinaryWhereConditions().contains(nuwcCloned)) {
+									initialQuery.getBinaryWhereConditions().remove(ci);
+									ci--;
+								} else {
+									initialQuery.getBinaryWhereConditions().remove(ci);
+									initialQuery.getBinaryWhereConditions().add(ci, nuwcCloned);
+								}
+							}
+							for (int out = 0; out < initialQuery.getOutputs().size(); out++) {
+								Output o = initialQuery.getOutputs().get(out);
+								boolean changed = false;
+								Output cloned = o.clone();
+								for (Column c : cloned.getObject().getAllColumnRefs()) {
+									if (c.getAlias().equals(reduntant.getAlias())) {
+										cloned.getObject().changeColumn(c,
+												new Column(coveringTable.getAlias(), c.getName()));
+										changed = true;
+									}
+								}
+								if (!changed) {
+									continue;
+								} else {
+									initialQuery.getOutputs().remove(out);
+									initialQuery.getOutputs().add(out, cloned);
+
+								}
+
+							}
+							for (int ci = 0; ci < initialQuery.getUnaryWhereConditions().size(); ci++) {
+								Column c = initialQuery.getUnaryWhereConditions().get(ci).getAllColumnRefs().get(0);
+								if (c.getAlias().equals(reduntant.getAlias())) {
+									initialQuery.getUnaryWhereConditions().remove(ci);
 									ci--;
 								}
 							}
@@ -244,19 +286,20 @@ public class ConjunctiveQueryDecomposer {
 									ci--;
 								}
 							}
-							for(int g=0;g<initialQuery.getGroupBy().size();g++){
-								Column c=initialQuery.getGroupBy().get(g);
+							for (int g = 0; g < initialQuery.getGroupBy().size(); g++) {
+								Column c = initialQuery.getGroupBy().get(g);
 								if (c.getAlias().equals(reduntant.getAlias())) {
 									initialQuery.getGroupBy().remove(g);
 									initialQuery.getGroupBy().add(new Column(coveringTable.getAlias(), c.getName()));
 								}
 							}
-							
-							for(int g=0;g<initialQuery.getOrderBy().size();g++){
-								ColumnOrderBy c=initialQuery.getOrderBy().get(g);
+
+							for (int g = 0; g < initialQuery.getOrderBy().size(); g++) {
+								ColumnOrderBy c = initialQuery.getOrderBy().get(g);
 								if (c.getAlias().equals(reduntant.getAlias())) {
 									initialQuery.getOrderBy().remove(g);
-									initialQuery.getOrderBy().add(new ColumnOrderBy(coveringTable.getAlias(), c.getName(), c.isAsc));
+									initialQuery.getOrderBy()
+											.add(new ColumnOrderBy(coveringTable.getAlias(), c.getName(), c.isAsc));
 								}
 							}
 							initialQuery.getInputTables().remove(reduntant);
@@ -268,176 +311,167 @@ public class ConjunctiveQueryDecomposer {
 					}
 				}
 			}
-			System.out.println("Red. checke in::::"+(System.currentTimeMillis()-timeStart));
+			System.out.println("Red. checke in::::" + (System.currentTimeMillis() - timeStart));
 		}
-		if(checkViews&&viewinfos!=null){
-			int tableCounter=0;
-			if(this.initialQuery.getGroupBy().isEmpty()&&this.initialQuery.getOrderBy().isEmpty()){
-			for(int i=0;i<this.initialQuery.getInputTables().size();i++){
-				Table t=this.initialQuery.getInputTables().get(i);
-				if(viewinfos.containsKey(t.getName())){
-					for(ViewInfo vi:viewinfos.get(t.getName())){
-						//NonUnaryWhereCondition toChange=null;
-						boolean replace=true;
-						//int noOfContainedConditions=0;
-						Set<Operand> toDelete=new HashSet<Operand>();
-						if(vi.isOr()){
-							for(UnaryWhereCondition uwc:this.initialQuery.getUnaryWhereConditions()){
-								if(!uwc.getAllColumnRefs().isEmpty()){
-									Column c=uwc.getAllColumnRefs().get(0);
-									if(c.getAlias().equals(t.getAlias())){
-										if(!c.getName().equals(vi.getOutput())){
-											replace=false;
+		if (checkViews && viewinfos != null) {
+			int tableCounter = 0;
+			if (this.initialQuery.getGroupBy().isEmpty() && this.initialQuery.getOrderBy().isEmpty()) {
+				for (int i = 0; i < this.initialQuery.getInputTables().size(); i++) {
+					Table t = this.initialQuery.getInputTables().get(i);
+					if (viewinfos.containsKey(t.getName())) {
+						for (ViewInfo vi : viewinfos.get(t.getName())) {
+							// NonUnaryWhereCondition toChange=null;
+							boolean replace = true;
+							// int noOfContainedConditions=0;
+							Set<Operand> toDelete = new HashSet<Operand>();
+							if (vi.isOr()) {
+								for (UnaryWhereCondition uwc : this.initialQuery.getUnaryWhereConditions()) {
+									if (!uwc.getAllColumnRefs().isEmpty()) {
+										Column c = uwc.getAllColumnRefs().get(0);
+										if (c.getAlias().equals(t.getAlias())) {
+											if (!c.getName().equals(vi.getOutput())) {
+												replace = false;
+												break;
+											}
+										}
+									}
+								}
+								for (NonUnaryWhereCondition nuwc : this.initialQuery.getBinaryWhereConditions()) {
+									if (!replace) {
+										break;
+									}
+									boolean containsAll = true;
+									boolean containsOne = false;
+									boolean containsOutput = true;
+									for (Column c : nuwc.getAllColumnRefs()) {
+										if (c.getAlias().equals(t.getAlias())) {
+											containsOne = true;
+											if (!c.getName().equals(vi.getOutput())) {
+												containsOutput = false;
+											}
+										} else {
+											containsAll = false;
+										}
+									}
+									if (containsAll) {
+										NonUnaryWhereCondition cloned = nuwc.clone();
+										for (Column c : nuwc.getAllColumnRefs()) {
+											cloned.changeColumn(c, new Column(null, c.getName()));
+										}
+										Set<NonUnaryWhereCondition> ors = cloned.getOrConditions();
+										if (ors == null) {
+											replace = false;
 											break;
 										}
-									}
-								}
-							}
-							for(NonUnaryWhereCondition nuwc:this.initialQuery.getBinaryWhereConditions()){
-								if(!replace){
-									break;
-								}
-								boolean containsAll=true;
-								boolean containsOne=false;
-								boolean containsOutput=true;
-								for(Column c:nuwc.getAllColumnRefs()){
-									if(c.getAlias().equals(t.getAlias())){
-										containsOne=true;
-										if(!c.getName().equals(vi.getOutput())){
-											containsOutput=false;
+
+										if (!vi.orsAreEqual(ors)) {
+											replace = false;
+											break;
+										} else {
+											toDelete.add(nuwc);
+										}
+									} else if (containsOne) {
+										if (!containsOutput) {
+											// also contains some other col from
+											// initial table
+											replace = false;
+											break;
+										} else {
+											// toChange=nuwc;
 										}
 									}
-									else{
-										containsAll=false;
+
+								}
+
+							} else {
+
+								for (UnaryWhereCondition uwc : this.initialQuery.getUnaryWhereConditions()) {
+									if (!uwc.getAllColumnRefs().isEmpty()) {
+										Column c = uwc.getAllColumnRefs().get(0);
+										if (c.getAlias().equals(t.getAlias())) {
+											UnaryWhereCondition cloned = uwc.clone();
+											cloned.changeColumn(c, new Column(null, c.getName()));
+											if (!c.getName().equals(vi.getOutput()) && !vi.containsCondition(cloned)) {
+												replace = false;
+												break;
+											} else {
+												if (vi.containsCondition(cloned))
+													toDelete.add(uwc);
+											}
+										}
 									}
 								}
-								if(containsAll){
-									NonUnaryWhereCondition cloned=nuwc.clone();
-									for(Column c:nuwc.getAllColumnRefs()){
-										cloned.changeColumn(c, new Column(null, c.getName()));
-									}
-									Set<NonUnaryWhereCondition> ors=cloned.getOrConditions();
-									if(ors==null){
-										replace=false;
+								for (NonUnaryWhereCondition nuwc : this.initialQuery.getBinaryWhereConditions()) {
+									if (!replace) {
 										break;
 									}
-									
-									if(!vi.orsAreEqual(ors)){
-										replace=false;
-										break;
+									boolean containsAll = true;
+									boolean containsOne = false;
+									boolean containsOutput = true;
+									for (Column c : nuwc.getAllColumnRefs()) {
+										if (c.getAlias().equals(t.getAlias())) {
+											containsOne = true;
+											if (!c.getName().equals(vi.getOutput())) {
+												containsOutput = false;
+											}
+										} else {
+											containsAll = false;
+										}
 									}
-									else{
-										toDelete.add(nuwc);
+									if (containsAll) {
+										NonUnaryWhereCondition cloned = nuwc.clone();
+										for (Column c : nuwc.getAllColumnRefs()) {
+											cloned.changeColumn(c, new Column(null, c.getName()));
+										}
+										if (!vi.containsCondition(cloned)) {
+											replace = false;
+											break;
+										} else {
+											toDelete.add(nuwc);
+										}
+									} else if (containsOne) {
+										if (!containsOutput) {
+											// also contains some other col from
+											// initial table
+											replace = false;
+											break;
+										} else {
+											// toChange=nuwc;
+										}
 									}
-								}
-								else if(containsOne){
-									if(!containsOutput){
-										//also contains some other col from initial table
-										replace=false;
-										break;
-									}
-									else{
-										//toChange=nuwc;
-									}
-								}
-								
-								
-							}
-							
-						}
-						else{
-						
-						for(UnaryWhereCondition uwc:this.initialQuery.getUnaryWhereConditions()){
-							if(!uwc.getAllColumnRefs().isEmpty()){
-								Column c=uwc.getAllColumnRefs().get(0);
-								if(c.getAlias().equals(t.getAlias())){
-									UnaryWhereCondition cloned=uwc.clone();
-									cloned.changeColumn(c, new Column(null, c.getName()));
-									if(!c.getName().equals(vi.getOutput())&&!vi.containsCondition(cloned)){
-										replace=false;
-										break;
-									}
-									else{
-										if(vi.containsCondition(cloned))
-										toDelete.add(uwc);
-									}
+
 								}
 							}
-						}
-						for(NonUnaryWhereCondition nuwc:this.initialQuery.getBinaryWhereConditions()){
-							if(!replace){
-								break;
-							}
-							boolean containsAll=true;
-							boolean containsOne=false;
-							boolean containsOutput=true;
-							for(Column c:nuwc.getAllColumnRefs()){
-								if(c.getAlias().equals(t.getAlias())){
-									containsOne=true;
-									if(!c.getName().equals(vi.getOutput())){
-										containsOutput=false;
+							if (replace && toDelete.size() == vi.getNumberOfConditions()) {
+								this.initialQuery.getInputTables().remove(i);
+								this.initialQuery.getInputTables().add(i,
+										new Table(vi.getTableName().toLowerCase(), vi.getTableName() + tableCounter));
+								for (Operand o : toDelete) {
+									this.initialQuery.getBinaryWhereConditions().remove(o);
+									this.initialQuery.getUnaryWhereConditions().remove(o);
+								}
+								System.out.println("replacing...");
+								for (NonUnaryWhereCondition nuwc : this.initialQuery.getBinaryWhereConditions()) {
+									for (Column c : nuwc.getAllColumnRefs()) {
+										if (c.getAlias().equals(t.getAlias())) {
+											c.setAlias(vi.getTableName() + tableCounter);
+										}
 									}
 								}
-								else{
-									containsAll=false;
-								}
-							}
-							if(containsAll){
-								NonUnaryWhereCondition cloned=nuwc.clone();
-								for(Column c:nuwc.getAllColumnRefs()){
-									cloned.changeColumn(c, new Column(null, c.getName()));
-								}
-								if(!vi.containsCondition(cloned)){
-									replace=false;
-									break;
-								}
-								else{
-									toDelete.add(nuwc);
-								}
-							}
-							else if(containsOne){
-								if(!containsOutput){
-									//also contains some other col from initial table
-									replace=false;
-									break;
-								}
-								else{
-									//toChange=nuwc;
-								}
-							}
-							
-						}
-						}
-						if(replace&&toDelete.size()==vi.getNumberOfConditions()){
-							this.initialQuery.getInputTables().remove(i);
-							this.initialQuery.getInputTables().add(i, new Table(vi.getTableName().toLowerCase(), vi.getTableName()+tableCounter));
-							for(Operand o:toDelete){
-								this.initialQuery.getBinaryWhereConditions().remove(o);
-								this.initialQuery.getUnaryWhereConditions().remove(o);
-							}
-							System.out.println("replacing...");
-							for(NonUnaryWhereCondition nuwc:this.initialQuery.getBinaryWhereConditions()){
-								for(Column c:nuwc.getAllColumnRefs()){
-									if(c.getAlias().equals(t.getAlias())){
-										c.setAlias(vi.getTableName()+tableCounter);
+								for (UnaryWhereCondition uwc : this.initialQuery.getUnaryWhereConditions()) {
+									for (Column c : uwc.getAllColumnRefs()) {
+										if (c.getAlias().equals(t.getAlias())) {
+											c.setAlias(vi.getTableName() + tableCounter);
+										}
 									}
+
 								}
+								tableCounter++;
 							}
-							for(UnaryWhereCondition uwc:this.initialQuery.getUnaryWhereConditions()){
-								for(Column c:uwc.getAllColumnRefs()){
-									if(c.getAlias().equals(t.getAlias())){
-										c.setAlias(vi.getTableName()+tableCounter);
-									}
-								}
-							
-							
-						}
-							tableCounter++;
 						}
 					}
 				}
 			}
-		}
 		}
 		for (NonUnaryWhereCondition bwc : initialQuery.getBinaryWhereConditions()) {
 			this.remainingWhereConditions.add(bwc);
@@ -703,14 +737,14 @@ public class ConjunctiveQueryDecomposer {
 	private void computeColumnEquivalences(EquivalentColumnClasses eq, Set<String> tablesWithInequalityConditions) {
 
 		for (NonUnaryWhereCondition nuwc : this.initialQuery.getBinaryWhereConditions()) {
-			if(!(nuwc.getLeftOp().getAllColumnRefs().isEmpty()||nuwc.getRightOp().getAllColumnRefs().isEmpty())){
-			if (nuwc.getOperator().equals("=")) {
-				eq.mergePartitionRecords(nuwc);
-			} else  {
-				tablesWithInequalityConditions.add(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias());
-				tablesWithInequalityConditions.add(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias());
+			if (!(nuwc.getLeftOp().getAllColumnRefs().isEmpty() || nuwc.getRightOp().getAllColumnRefs().isEmpty())) {
+				if (nuwc.getOperator().equals("=")) {
+					eq.mergePartitionRecords(nuwc);
+				} else {
+					tablesWithInequalityConditions.add(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias());
+					tablesWithInequalityConditions.add(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias());
+				}
 			}
-		}
 		}
 
 	}
@@ -1462,9 +1496,9 @@ public class ConjunctiveQueryDecomposer {
 	public static void resetCounter() {
 		counter = 0;
 	}
-	
+
 	public void setViewInfos(Map<String, Set<ViewInfo>> viewinfos) {
-		this.viewinfos=viewinfos;
-		
+		this.viewinfos = viewinfos;
+
 	}
 }

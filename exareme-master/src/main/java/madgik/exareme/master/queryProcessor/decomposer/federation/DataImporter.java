@@ -24,6 +24,8 @@ public class DataImporter implements Runnable {
 	private boolean addToRegistry;
 	private String fedSQLTrue;
 	private String fedSQLFalse;
+	private String primaryKey;
+	private boolean withoutRowID;
 	
 	private static final Logger log = Logger.getLogger(DataImporter.class);
 
@@ -34,6 +36,8 @@ public class DataImporter implements Runnable {
 		this.addToRegistry=false;
 		fedSQLTrue=s.getExecutionStringInFederatedSource(true);
 		fedSQLFalse=s.getExecutionStringInFederatedSource(false);
+		primaryKey="";
+		withoutRowID=false;
 	}
 
 	@Override
@@ -149,7 +153,11 @@ public class DataImporter implements Runnable {
 					comma = ",";
 				}
 				sql += ")";
+				createTableSQL.append(primaryKey);
 				createTableSQL.append(")");
+				if(this.withoutRowID){
+					createTableSQL.append(" WITHOUT ROWID ");
+				}
 				Statement creatSt = sqliteConnection.createStatement();
 				log.debug("executing:" +createTableSQL);
 				creatSt.execute(createTableSQL.toString());
@@ -223,7 +231,7 @@ public class DataImporter implements Runnable {
 			table.setHashID(s.getHashId().asBytes());*/
 			PhysicalTable pt=new PhysicalTable(table);
 			Partition partition0 = new Partition(s.getTemporaryTableName(), 0);
-			partition0.addLocation("127.0.0.1");
+			partition0.addLocation("195.134.71.157");
             //partition0.addLocation(ArtRegistryLocator.getLocalRmiRegistryEntityName().getIP());
             //partition0.addPartitionColumn("");
 			pt.addPartition(partition0);
@@ -239,6 +247,14 @@ public class DataImporter implements Runnable {
 	public void setFedSQL(String fedSQL) {
 		this.fedSQLTrue = fedSQL;
 		this.fedSQLFalse = fedSQL;
+	}
+
+	public void setPrimaryKey(String primaryKey) {
+		this.primaryKey = primaryKey;
+	}
+
+	public void setWithoutRowID(boolean withoutRowID) {
+		this.withoutRowID = withoutRowID;
 	}
 	
 	

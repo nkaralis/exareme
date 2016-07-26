@@ -93,7 +93,7 @@ public class QueryDecomposer {
 		this.db = database;
 		// DBInfoReader.read("./conf/dbinfo.properties");
 		union = new Node(Node.AND);
-		if (initialQuery.isUnionAll()) {
+		if (initialQuery.isUnionAll()&&!initialQuery.isOutputColumnsDinstict()) {
 			union.setObject(("UNIONALL"));
 			union.setOperator(Node.UNIONALL);
 			this.useSIP = false;
@@ -205,6 +205,18 @@ public class QueryDecomposer {
 				s.setOutputColumnsDinstict(true);
 			}
 		}
+		if(res.size()==1){
+			Node u1 = root.getChildAt(0);
+			if (u1.getOpCode() == Node.UNION) {
+				res.get(0).setOutputColumnsDistinct(true);
+			} else {
+				Node u2 = u1.getChildAt(0).getChildAt(0);
+				if (u2.getOpCode() == Node.UNION) {
+					res.get(0).setOutputColumnsDistinct(true);
+				}
+			}
+			
+		}
 
 		if (importExternal) {
 			// create dir to store dbs if not exists
@@ -272,9 +284,11 @@ public class QueryDecomposer {
 		unionnumber = 0;
 		sipToUnions = new SipToUnions();
 		sipToUnions.put(root.getChildAt(0).getObject().toString(), new HashSet<SipNode>());
-		
+		if(root.getChildAt(0).getChildren().size()<2){
+			this.useSIP=false;
+		}
 		expandDAG(root);
-
+		
 		// System.out.println("expandtime:"+(System.currentTimeMillis()-b));
 		// System.out.println("noOfnode:"+root.count(0));
 		if (this.useSIP) {
@@ -427,6 +441,7 @@ public class QueryDecomposer {
 		//
 		// Plan best = findBestPlan(root, cost, memo, new HashSet<Node>(), cel);
 		// System.out.println(best.getPath().toString());
+		
 		SinlgePlanDFLGenerator dsql = new SinlgePlanDFLGenerator(root, noOfparts, memo, registry);
 		dsql.setN2a(n2a);
 		if (this.useSIP) {
@@ -434,6 +449,7 @@ public class QueryDecomposer {
 			dsql.setUseSIP(useSIP);
 			dsql.setSipToUnions(sipToUnions);
 		}
+		
 		return (List<SQLQuery>) dsql.generate();
 		// return null;
 	}
@@ -509,8 +525,7 @@ public class QueryDecomposer {
 
 					// rename outputs
 					if (!(s.isSelectAll() && s.getBinaryWhereConditions().isEmpty()
-							&& s.getUnaryWhereConditions().isEmpty() && s.getGroupBy().isEmpty()
-							&& s.getOrderBy().isEmpty() && s.getNestedSelectSubqueries().size() == 1
+							&& s.getUnaryWhereConditions().isEmpty() && s.getNestedSelectSubqueries().size() == 1
 							&& !s.getNestedSelectSubqueries().keySet().iterator().next().hasNestedSuqueries())) {
 						// rename outputs
 						String alias = s.getNestedSubqueryAlias(nested);
@@ -1118,6 +1133,10 @@ public class QueryDecomposer {
 							}
 						}
 					}
+					else if(join.getOpCode()==Node.SELECT||join.getOpCode()==Node.BASEPROJECT){
+						//we don't have joins, consider common table to be null
+						sipInfo.addToSipInfo(p, sipToUnions.get(uniontable), join.getChildAt(0));
+					}
 				}
 				for(CartesianSip cs:this.cartesianSips){
 					sipInfo.addToSipInfo(p, cs, sipToUnions.get(uniontable));
@@ -1133,6 +1152,8 @@ public class QueryDecomposer {
 		if (q == q2) {
 			return;
 		}
+		
+
 		if(this.useSIP&&!q.getParents().isEmpty()&&q.getFirstParent().getOpCode()==Node.UNION){
 			System.out.println("unified unions");
 			
@@ -1817,7 +1838,7 @@ public class QueryDecomposer {
 			if (greedyToMat.containsKey(e) && e.getFirstParent().getOpCode() != Node.UNION) {
 				cmv.setMaterialized(true);
 				e.setMaterialised(true);
-				greedyToMat.put(e, resultPlan.getCost() + NodeCostEstimator.getWriteCost(e) * 2);
+				greedyToMat.put(e, resultPlan.getCost() + NodeCostEstimator.getWriteCost(e));
 				resultPlan.setCost(NodeCostEstimator.getReadCost(e));
 			}
 		}

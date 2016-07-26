@@ -4,6 +4,7 @@
  */
 package madgik.exareme.master.queryProcessor.decomposer.query;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,27 +38,37 @@ public class Constant implements Operand {
         return value.toString();
     }
 
-    @Override public int hashCode() {
-        int hash = 7;
-        hash = 29 * hash + (this.value != null ? this.value.hashCode() : 0);
-        return hash;
-    }
 
-    @Override public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Constant other = (Constant) obj;
-        if (this.value != other.value && (this.value == null || !this.value.equals(other.value))) {
-            return false;
-        }
-        return true;
-    }
 
-    public void setValue(Object v) {
+    @Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (isArithmetic ? 1231 : 1237);
+		result = prime * result + ((value == null) ? 0 : value.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Constant other = (Constant) obj;
+		if (isArithmetic != other.isArithmetic)
+			return false;
+		if (value == null) {
+			if (other.value != null)
+				return false;
+		} else if (!value.equals(other.value))
+			return false;
+		return true;
+	}
+
+	public void setValue(Object v) {
         this.value = v;
     }
 
@@ -83,8 +94,7 @@ public class Constant implements Operand {
 
 	@Override
 	public HashCode getHashID() {
-		// TODO Auto-generated method stub
-		return Hashing.sha1().hashBytes(this.value.toString().toUpperCase().getBytes());
+		return Hashing.sha1().hashBytes(this.toString().toUpperCase().getBytes());
 	}
 
 }

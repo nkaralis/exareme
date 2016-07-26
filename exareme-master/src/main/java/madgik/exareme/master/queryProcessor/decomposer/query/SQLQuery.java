@@ -312,7 +312,7 @@ public class SQLQuery {
 					} else {
 						output.append(t.toString().toLowerCase());
 					}
-					separator = ", \n";
+					separator = " CROSS JOIN ";
 				}
 			}
 		}
@@ -2190,6 +2190,9 @@ public class SQLQuery {
 				if (newb) {
 					// output.append("(");
 					for (Table t : getInputTables()) {
+						if (!this.isFederated) {
+							t.setName(t.getName().toLowerCase());
+						} 
 
 						if (t.getAlias().startsWith("siptable")) {
 							separator = " CROSS JOIN  ";
@@ -2460,7 +2463,7 @@ public class SQLQuery {
 
 	public String getMostProminentSipjoin(Set<String> keySet) {
 		if (this.sis != null) {
-			int min = this.getInputTables().size();
+			int min = this.getInputTables().size()+1;
 			String result = null;
 			for (SipJoin sj : this.sis) {
 				if (sj.getNumber() < min) {

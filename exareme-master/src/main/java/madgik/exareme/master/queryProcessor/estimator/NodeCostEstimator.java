@@ -159,7 +159,9 @@ public class NodeCostEstimator {
         if (Double.isNaN(responseTime)) {
             throw new Exception("NaN");
         }
-        
+        //if(nuwc.getRightOp().toString().contains("wlbDrillingOperator")){
+        //	responseTime=3*responseTime;
+        //}
         return responseTime;
     }
 

@@ -373,6 +373,9 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 		NodeInfo pi = new NodeInfo();
 		String tableAlias = ((Table) n.getObject()).getName();
 		RelInfo rel = this.schema.getTableIndex().get(tableAlias);
+		if(rel==null){
+			rel = this.schema.getTableIndex().get(tableAlias.toLowerCase());
+		}
 		// RelInfo rel = this.planInfo.get(n.getHashId()).getResultRel();
 
 		// System.out.println(rel);
@@ -394,9 +397,12 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 			return maxDiff;
 		}
 		for(String output:columns){
-			
+			try{
 			if(rel.getAttrIndex().get(output).getHistogram().distinctValues()>maxDiff){
 				maxDiff=rel.getAttrIndex().get(output).getHistogram().distinctValues();
+			} }
+			catch(NullPointerException e){
+				System.out.println("ddd");
 			}
 		}
 		return rel.getNumberOfTuples()/maxDiff;

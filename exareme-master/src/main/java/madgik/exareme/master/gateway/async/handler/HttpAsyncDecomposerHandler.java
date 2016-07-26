@@ -427,6 +427,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 						log.debug("Sending 1 : " + se.toString());
 						httpResponse.setEntity(se);
 					} else if (!query.startsWith("distributed")) {
+						//long timestart=System.currentTimeMillis();
 						int timeoutMs = 0;
 						try {
 							timeoutMs = Integer.parseInt(inputContent.get(ExaremeGatewayUtils.REQUEST_TIMEOUT)) * 1000;
@@ -530,6 +531,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 								
 								//when using cache
 								//AdpDBClientQueryStatus status = dbClient.query("dquery", decomposedQuery, hashIDMap);
+								//System.out.println("DECOMPOSER TIME:"+(System.currentTimeMillis()-timestart));
 								AdpDBClientQueryStatus status = dbClient.query("dquery", decomposedQuery, extraCommands);
 								while (status.hasFinished() == false && status.hasError() == false) {
 									if (timeoutMs > 0) {
@@ -540,7 +542,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 											throw new RuntimeException("Time out:" + timeoutMs + " ms passed");
 										}
 									}
-									Thread.sleep(100);
+									Thread.sleep(50);
 								}
 								if (status.hasError()) {
 									throw new RuntimeException(status.getError());

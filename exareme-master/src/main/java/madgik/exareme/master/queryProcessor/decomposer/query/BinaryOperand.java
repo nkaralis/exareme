@@ -89,8 +89,9 @@ public class BinaryOperand implements Operand {
 	public HashCode getHashID() {
 		List<HashCode> codes=new ArrayList<HashCode>();
 		codes.add(this.leftOp.getHashID());
-		codes.add(this.rightOp.getHashID());
 		codes.add(Hashing.sha1().hashBytes(operator.getBytes()));
+		codes.add(this.rightOp.getHashID());
+		
 		return Hashing.combineOrdered(codes);
 	}
 
