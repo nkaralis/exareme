@@ -155,8 +155,8 @@ public class MadisProcessExecutor {
                                 "Error occurred while storage client try to fetch partitions!");
                             throw new RemoteException();
                         }
-
-                        attachedDBs.append("attach database '" + loc + "' as " + dbName + "; \n");
+                        attachedDBs.append("ATTACH 'file:"+loc+"?cache=shared' AS "+dbName+ "; \n");
+                        //attachedDBs.append("attach database '" + loc + "' as " + dbName + "; \n");
                         attachedDBs.append(".schema " + dbName + "." + input + "; \n");
                         numInputDatabases++;
                     } else {

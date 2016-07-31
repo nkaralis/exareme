@@ -15,7 +15,7 @@ public class IndexCreator {
 	public static void main(String[] args) throws IOException, SQLException {
 		// TODO Auto-generated method stub
 		boolean declaredIndices=true;
-		String dir="/media/dimitris/T/exaremenpd1500/";
+		String dir="/media/dimitris/T/exaremenpd500new/";
 		String declared="/home/dimitris/ontopv1/npd-benchmark/data/db_creation_scripts/postgres/postgresindexes.sql";
 		String automatic="/home/dimitris/ontopv1/npd-benchmark/data/db_creation_scripts/postgres/postgresAutomaticIndexes.sql";
 		String file=automatic;
@@ -25,9 +25,13 @@ public class IndexCreator {
 				for(String command:readFile(file)){
 			String tablename=command.split("\"")[3];
 			Connection sqliteConnection = DriverManager.getConnection("jdbc:sqlite:"
-					+ dir + tablename + ".0.db");
+					+ dir + tablename.toLowerCase() + ".0.db");
 			Statement st=sqliteConnection.createStatement();
+			try{
 			st.execute(command);
+			}catch(SQLException e){
+				e.printStackTrace();
+			}
 			st.close();
 			sqliteConnection.close();
 		}

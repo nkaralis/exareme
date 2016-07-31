@@ -81,7 +81,7 @@ public class MappingsTester {
 		}
 		
 		//String obdafile="/home/dimitris/ontopv1/iswc2014-benchmark/LUBM/univ-benchQL.ttl";
-		String obdafile="/home/dimitris/ontopv1/npd-benchmark/mappings/postgres/npd-v2-ql-postgres.ttl";
+		String obdafile="/home/dimitris/ontopv1/npdnew/npd-benchmark/mappings/postgres/ontop>=1.17/npd-v2-ql-postgres-ontop1.17.ttl";
 		R2RMLReader reader=null;
 		try {
 			reader = new R2RMLReader(obdafile);
@@ -157,7 +157,7 @@ public class MappingsTester {
 				
 				
 				try {
-					nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremenpd100/" + "histograms.json");
+					nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremenpd100new2/" + "histograms.json");
 				} catch (Exception e) {
 					
 				}
@@ -167,7 +167,7 @@ public class MappingsTester {
 					if(query.getInputTables().size()!=1||!query.getGroupBy().isEmpty()||!query.getOrderBy().isEmpty()){
 						continue;
 					}
-					String table=query.getInputTables().get(0).getName();
+					String table=query.getInputTables().get(0).getName().toLowerCase();
 					
 					for(Set<String> outputs:queryOutputs.get(sql)){
 						double dupl=nse.getDuplicateEstimation(table, outputs);
@@ -202,7 +202,7 @@ public class MappingsTester {
 						java.lang.reflect.Type viewType=new TypeToken<Map<String, Set<ViewInfo>>>() {}.getType(); 
 				        String jsonStr = gson.toJson(viewinfos, viewType);
 
-				        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremenpd100/" + "views.json", "UTF-8");
+				        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremenpd100new2/" + "views.json", "UTF-8");
 				        writer.println(jsonStr);
 				        writer.close();
 					}

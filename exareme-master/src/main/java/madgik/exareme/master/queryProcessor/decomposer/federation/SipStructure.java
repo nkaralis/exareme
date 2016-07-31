@@ -189,7 +189,7 @@ public class SipStructure {
 		// }
 		SipInfo si = new SipInfo(p, join.getLeftOp().getAllColumnRefs().get(0), left);
 		if (leftFilterColumn != null && rightFilterColumn != null) {
-			si.addJoinCol(leftFilterColumn);
+			si.addJoinCol(rightFilterColumn);
 		}
 		boolean exists = false;
 		SipInfoValue siv = new SipInfoValue(right, si.AnonymizeColumns());
@@ -211,7 +211,7 @@ public class SipStructure {
 		exists = false;
 		si = new SipInfo(p, join.getRightOp().getAllColumnRefs().get(0), right);
 		if (leftFilterColumn != null && rightFilterColumn != null) {
-			si.addJoinCol(rightFilterColumn);
+			si.addJoinCol(leftFilterColumn);
 		}
 		siv = new SipInfoValue(left, si.AnonymizeColumns());
 		for (SipInfo siKey : sipInfos.keySet()) {

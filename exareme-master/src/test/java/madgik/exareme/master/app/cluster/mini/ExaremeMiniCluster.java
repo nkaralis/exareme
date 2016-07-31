@@ -57,9 +57,9 @@ public class ExaremeMiniCluster implements ExaremeCluster {
             log.info("**--" + System.getenv("EXAREME_MADIS"));
         } else if (new File(relMadisPath).exists()) {
             log.info("Relative madis Path : " + relMadisPath);
-            System.setProperty("EXAREME_PYTHON", "python");
-            System.setProperty("EXAREME_MADIS", relMadisPath);
-            System.setProperty("MADIS_PATH", relMadisPath);
+            System.setProperty("EXAREME_PYTHON", "sqlite3");
+            System.setProperty("EXAREME_MADIS", "");
+            System.setProperty("MADIS_PATH", "");
             log.info("**--" + System.getProperty("EXAREME_MADIS"));
             log.info("**--" + relMadisPath);
 

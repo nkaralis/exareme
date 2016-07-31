@@ -1165,9 +1165,13 @@ public class SinlgePlanDFLGenerator {
 
 										Column sipCol2 = new Column(si.getName(), "x");
 
-										addLeftOfCrossJoin(nuwc, tempResult, sn, leftOfCrossJoin.size(), sipCol2);
+										addLeftOfCrossJoin(nuwc, tempResult, sn, leftOfCrossJoin.size(), sipCol2, leftOfCrossJoin);
 									}
 								} else if (!cutSipForOneTable) {
+									Set<String> leftTables=new HashSet<String>();
+									for(int t=0;t<current.getInputTables().size()-rightOfCrossJoin.size();t++){
+										leftTables.add(current.getInputTables().get(t).getAlias());
+									}
 
 									Column sipCol = new Column(si.getName(), "x");
 									if (si.getJoinCol().equals(nuwc.getLeftOp())) {
@@ -1176,7 +1180,7 @@ public class SinlgePlanDFLGenerator {
 												c.getName(), c.getAlias());
 
 										Operand previous = c2;
-										previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult);
+										previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult, leftTables);
 										for (SipInfoValue siv : this.sipStruct.getSipInfo(si)) {
 											if (siv.getNode() == sn.getNode()) {
 												for (Column out : siv.getOutputs()) {
@@ -1203,7 +1207,7 @@ public class SinlgePlanDFLGenerator {
 										Column c2 = new Column(tempResult.getQueryForBaseTable(c.getAlias()),
 												c.getName(), c.getAlias());
 										Operand previous = c2;
-										previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult);
+										previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult, leftTables);
 										for (SipInfoValue siv : this.sipStruct.getSipInfo(si)) {
 											if (siv.getNode() == sn.getNode()) {
 												for (Column out : siv.getOutputs()) {
@@ -1479,14 +1483,14 @@ public class SinlgePlanDFLGenerator {
 	}
 
 	private void addLeftOfCrossJoin(NonUnaryWhereCondition nuwc, ResultList tempResult, SipNode sn,
-			int leftOfCrossJoinSize, Column sipCol2) {
+			int leftOfCrossJoinSize, Column sipCol2, Set<String> leftOfCrossJoin) {
 		SipInfo si = sn.getSipInfo();
 		Column siJoinCol = si.getJoinCol();
 		if (siJoinCol.equals(nuwc.getLeftOp())) {
 			Column c = (Column) nuwc.getRightOp();
 			Column c2 = new Column(tempResult.getQueryForBaseTable(c.getAlias()), c.getName(), c.getAlias());
 			Operand previous = c2;
-			previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult);
+			previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult, leftOfCrossJoin);
 
 			for (SipInfoValue siv : this.sipStruct.getSipInfo(si)) {
 				if (siv.getNode() == sn.getNode()) {
@@ -1520,7 +1524,7 @@ public class SinlgePlanDFLGenerator {
 			Column c = (Column) nuwc.getLeftOp();
 			Column c2 = new Column(tempResult.getQueryForBaseTable(c.getAlias()), c.getName(), c.getAlias());
 			Operand previous = c2;
-			previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult);
+			previous = addFilterJoin(si.getOtherJoinCol(), previous, tempResult, leftOfCrossJoin);
 			for (SipInfoValue siv : this.sipStruct.getSipInfo(si)) {
 				if (siv.getNode() == sn.getNode()) {
 					System.out.println("***************************");
@@ -1551,23 +1555,29 @@ public class SinlgePlanDFLGenerator {
 
 	}
 
-	private Operand addFilterJoin(Column filterJoin, Operand previous, ResultList tempResult) {
+	private Operand addFilterJoin(Column filterJoin, Operand previous, ResultList tempResult, Set<String> tables) {
 		if (filterJoin != null) {
 			Column filterRenamed = new Column(tempResult.getQueryForBaseTable(filterJoin.getAlias()),
 					filterJoin.getName(), filterJoin.getAlias());
 			Column toAddToSip = null;
-			for (NonUnaryWhereCondition join : tempResult.getCurrent().getBinaryWhereConditions()) {
-				if (join.getLeftOp() instanceof Column && join.getRightOp() instanceof Column) {
-					if (join.getLeftOp().equals(filterRenamed)) {
-						toAddToSip = (Column) join.getRightOp();
-						break;
-					}
-					if (join.getRightOp().equals(filterRenamed)) {
-						toAddToSip = (Column) join.getLeftOp();
-						break;
-					}
-				}
-			}
+			//for (NonUnaryWhereCondition join : tempResult.getCurrent().getBinaryWhereConditions()) {
+			//	if (join.getLeftOp() instanceof Column && join.getRightOp() instanceof Column) {
+			//		if (join.getLeftOp().equals(filterJoin)) {
+			//			Column toadd=(Column) join.getRightOp();
+						//if(tables.contains(toadd.getAlias())){
+						toAddToSip = filterRenamed;
+			//			break;
+			//			//}
+			//		}
+			//		if (join.getRightOp().equals(filterJoin)) {
+		//				Column toadd= (Column) join.getLeftOp();
+						//if(tables.contains(toadd.getAlias())){
+		//				toAddToSip = toadd;
+			//			break;
+						//}
+			//		}
+		//		}
+	//		}
 			if (toAddToSip == null) {
 				System.out.println("other col null!?");
 			} else {
