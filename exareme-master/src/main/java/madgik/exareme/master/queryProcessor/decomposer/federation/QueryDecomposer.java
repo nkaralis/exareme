@@ -284,7 +284,8 @@ public class QueryDecomposer {
 		unionnumber = 0;
 		sipToUnions = new SipToUnions();
 		sipToUnions.put(root.getChildAt(0).getObject().toString(), new HashSet<SipNode>());
-		if (root.getChildAt(0).getChildren().size() < 2) {
+		if(root.hasOneSubquery()){
+		//if (root.getChildAt(0).getChildren().size() < 2) {
 			this.useSIP = false;
 		}
 		expandDAG(root);
@@ -757,6 +758,8 @@ public class QueryDecomposer {
 										Node associativityImplicit = new Node(Node.AND, Node.JOIN);
 										NonUnaryWhereCondition newBwcImplicit = new NonUnaryWhereCondition();
 										if(addImplicit){
+											//System.out.println(bwc+"----");
+											//System.out.println(bwc2);
 											newBwcImplicit.setOperator("=");
 											
 											newBwcImplicit.setLeftOp(bwc.getLeftOp());
@@ -794,7 +797,9 @@ public class QueryDecomposer {
 												cartesianSips.add(new CartesianSip((Column) bwc2.getRightOp(), dummy,
 														c3.getChildAt(0)));
 
-											} else {
+											} 
+											
+											if(!comesFromLeftOp){
 												String n2 = c3.getChildAt(0).getObject().toString();
 												dummy.addAllDescendantBaseTables(
 														c3.getChildAt(0).getDescendantBaseTables());

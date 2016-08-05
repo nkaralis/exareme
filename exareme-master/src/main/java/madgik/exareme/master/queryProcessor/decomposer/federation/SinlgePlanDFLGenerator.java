@@ -231,7 +231,7 @@ public class SinlgePlanDFLGenerator {
 					Set<SipJoin> sis = q.getSipInfo();
 					if (sis != null && sis.size() > 0) {
 						// String si = sis.iterator().next().getSipName();
-						boolean most = true;
+						boolean most = false;
 						boolean checkPrevious = true;
 						String si = null;
 						if (most) {
@@ -260,6 +260,9 @@ public class SinlgePlanDFLGenerator {
 
 				for (String si : queriesToSip.keySet()) {
 					System.out.println("no of sip:" + queriesToSip.get(si).size());
+					if(queriesToSip.get(si).size()==1){
+						continue;
+					}
 					if (si == null) {
 						System.out.println("si with one query!" + queriesToSip.get(si));
 						/*
@@ -331,6 +334,8 @@ public class SinlgePlanDFLGenerator {
 
 			}
 			if (!makeQueryForEachSip) {
+				
+				
 				Map<String, Boolean> sips = new HashMap<String, Boolean>();
 				Set<String> createVtables = new HashSet<String>();
 				for (int i = 0; i < qs.size() - 1; i++) {
@@ -339,12 +344,13 @@ public class SinlgePlanDFLGenerator {
 					Set<SipJoin> sis = q.getSipInfo();
 					if (sis != null && sis.size() > 0) {
 						for (SipJoin sj : sis) {
+							
 							if (sips.containsKey(sj.getSipName())) {
 								sips.put(sj.getSipName(), Boolean.TRUE);
 								createVtables
 										.add("create virtual table " + sj.getSipName() + " using unionsiptext; \n");
 							} else {
-								sips.put(sj.getSipName(), Boolean.TRUE);
+								sips.put(sj.getSipName(), Boolean.FALSE);
 							}
 						}
 					}
@@ -378,10 +384,9 @@ public class SinlgePlanDFLGenerator {
 				for (String v : createVtables) {
 					toReplace.appendCreateSipTables(v);
 				}
-				System.out.println(toRepl.toString());
+				//System.out.println(toRepl.toString());
 				qs.clear();
 				qs.add(toReplace);
-
 			}
 
 			System.out.println("final size:" + qs.size());

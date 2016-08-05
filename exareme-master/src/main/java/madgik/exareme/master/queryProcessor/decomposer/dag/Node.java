@@ -828,6 +828,16 @@ public class Node implements Comparator<Node>, Comparable<Node>{
 			break;
 		}
 	}
+
+	public boolean hasOneSubquery() {
+		if (this.getChildAt(0).getOpCode()==UNION||
+				this.getChildAt(0).getOpCode()==UNIONALL){
+			return this.getChildAt(0).getChildren().size()==1;
+		}
+		else{
+			return this.getChildAt(0).getChildAt(0).hasOneSubquery();
+		}
+	}
 	
 	
 

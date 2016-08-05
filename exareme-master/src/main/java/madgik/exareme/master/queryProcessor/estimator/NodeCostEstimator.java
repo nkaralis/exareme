@@ -30,8 +30,8 @@ public class NodeCostEstimator {
         		return 0.0;
         	}
             try {
-                NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) o.getObject();
-                return estimateJoin(nuwc, o.getChildAt(0), o.getChildAt(1));
+                
+                return estimateJoin(o, o.getChildAt(0), o.getChildAt(1));
             } catch (Exception ex) {
                 log.debug("Cannot get cost for join op " + o.toString() + ". Assuming dummy cost");
                 System.out.println("Cannot get cost for join op " + o.toString() + ". Assuming dummy cost");
@@ -71,8 +71,9 @@ public class NodeCostEstimator {
         }
     }
     private static Double estimateBaseProjection(Node o) {
-    	double a=indexCostCreation(o.getChildAt(0));
-    	return (o.getChildAt(0).getNodeInfo().outputRelSize() / Metadata.PAGE_SIZE) * Metadata.PAGE_IO_TIME;
+    	return 0.0;
+    	//double a=indexCostCreation(o.getChildAt(0));
+    	//return (o.getChildAt(0).getNodeInfo().outputRelSize() / Metadata.PAGE_SIZE) * Metadata.PAGE_IO_TIME;
 	}
 	//private final NodeSelectivityEstimator selEstimator;
 
@@ -93,8 +94,9 @@ public class NodeCostEstimator {
     }
 
     public static double estimateFilter(Node n) {
+    	return 0;
     	//if it's not on base relation return 0
-    	if(!n.getChildAt(0).getChildren().isEmpty() && n.getChildAt(0).getChildAt(0).getOpCode()!=Node.BASEPROJECT){
+    /*	if(!n.getChildAt(0).getChildren().isEmpty() && n.getChildAt(0).getChildAt(0).getOpCode()!=Node.BASEPROJECT){
     		return 0;
     	}
     	else{
@@ -127,11 +129,12 @@ public class NodeCostEstimator {
     			
     		}
     	}
-        
+        */
     }
 
-    public static double estimateJoin(NonUnaryWhereCondition nuwc, Node left, Node right)
+    public static double estimateJoin(Node o, Node left, Node right)
         throws Exception {
+    	NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) o.getObject();
     	if(right.getDescendantBaseTables().size()>1){
     		//bushy join
     		return 1000000.0;
@@ -141,7 +144,10 @@ public class NodeCostEstimator {
     		//bushy join
     	///	return 1000000.0;
     	//}
-
+    	double leftScanCost=0.0;
+    	if(left.getDescendantBaseTables().size()==1){
+    		leftScanCost=estimateLeftScanCost(left);
+    	}
 
         double leftRelTuples = left.getNodeInfo().getNumberOfTuples();
         double leftRelSize = left.getNodeInfo().outputRelSize();
@@ -149,7 +155,7 @@ public class NodeCostEstimator {
         double rightRelSize = right.getNodeInfo().outputRelSize();
         
         if(leftRelTuples<0.5||rightRelTuples<0.5){
-        	return 0.0;
+        	return 0.0+leftScanCost;
         }
 
         //        double childrenMaxResponseTime = Math.max(leftRelSize, rightRelSize);
@@ -159,13 +165,23 @@ public class NodeCostEstimator {
         if (Double.isNaN(responseTime)) {
             throw new Exception("NaN");
         }
-        //if(nuwc.getRightOp().toString().contains("wlbDrillingOperator")){
-        //	responseTime=3*responseTime;
-        //}
-        return responseTime;
+        //to fix inswx usage
+        if((nuwc.getLeftOp().toString().contains("cmpNpdidCompany")&&left.getDescendantBaseTables().size()==1)||(nuwc.getRightOp().toString().contains("wlbDrillingOperator")&&o.getFirstParent().getFirstParent().getOpCode()!=Node.PROJECT)){
+        	responseTime=30*responseTime;
+        }
+      
+        return responseTime+leftScanCost;
     }
 
-    public static double estimateRepartition(Node n, Column partitioningCol) {
+    private static double estimateLeftScanCost(Node left) {
+		if(left.getChildAt(0).getOpCode() == Node.BASEPROJECT){
+			return (left.getChildAt(0).getChildAt(0).getNodeInfo().outputRelSize() / Metadata.PAGE_SIZE) * Metadata.PAGE_IO_TIME;
+		}
+		else{
+			return estimateLeftScanCost(left.getChildAt(0).getChildAt(0));
+		}
+	}
+	public static double estimateRepartition(Node n, Column partitioningCol) {
         //this.planInfo.put(n.getHashId(), new NodeInfo());
         //this.selEstimator.estimateRepartition(n, partitioningCol, child);
 

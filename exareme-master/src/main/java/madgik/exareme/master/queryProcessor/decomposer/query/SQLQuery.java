@@ -2199,7 +2199,7 @@ public class SQLQuery {
 						}
 						output.append(separator);
 						output.append(t.toString());
-						separator = " JOIN ";
+						separator = " CROSS JOIN ";
 						// if (t.getAlias().startsWith("siptable")) {
 						// separator = " CROSS JOIN ";
 						// }
@@ -2424,6 +2424,7 @@ public class SQLQuery {
 	}
 
 	public void adddAllSips(Map<String, Boolean> sips) {
+	
 		if (sis != null) {
 			while (!sis.isEmpty()) {
 				SipJoin[] joins = sis.toArray(new SipJoin[sis.size()]);
@@ -2436,7 +2437,7 @@ public class SQLQuery {
 					}
 				}
 				sis.remove(next);
-				if (sips.get(next.getSipName())) {
+				if (sips.containsKey(next.getSipName())&&sips.get(next.getSipName())) {
 					this.addBinaryWhereCondition(next.getBwc());
 					this.addInputTableIfNotExists(new Table(next.getSipName(), next.getSipName()), next.getNumber());
 				}
@@ -2469,8 +2470,8 @@ public class SQLQuery {
 				if (sj.getNumber() < min) {
 					min = sj.getNumber();
 					result = sj.getSipName();
-				} else if (keySet.contains(sj.getSipName()) && sj.getNumber() - 3 < min) {
-					min = sj.getNumber() - 3;
+				} else if (keySet.contains(sj.getSipName()) && sj.getNumber() - 2 < min) {
+					min = sj.getNumber() - 2;
 					result = sj.getSipName();
 				}
 			}
