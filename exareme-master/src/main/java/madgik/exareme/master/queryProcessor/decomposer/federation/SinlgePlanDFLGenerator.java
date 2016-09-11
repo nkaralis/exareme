@@ -294,7 +294,9 @@ public class SinlgePlanDFLGenerator {
 								queriesForMaxSi.remove(n);
 								newSi.add(n);
 							}
+							multiplicities.put(maxSi, queriesToSip.get(maxSi).size());
 							queriesToSip.put(maxSi+"a", newSi);
+							multiplicities.put(maxSi+"a", queriesToSip.get(newSi).size());
 						}
 					}
 					 
