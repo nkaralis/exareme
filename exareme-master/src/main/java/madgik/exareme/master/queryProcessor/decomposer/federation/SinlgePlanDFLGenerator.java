@@ -29,7 +29,7 @@ public class SinlgePlanDFLGenerator {
 	private boolean useSIP;
 	private SipStructure sipStruct;
 	private final boolean useCache = AdpDBProperties.getAdpDBProps().getBoolean("db.cache");
-	private boolean addIndicesToMatQueries = false;
+	private boolean addIndicesToMatQueries = true;
 	private SipToUnions sipToUnions;
 	private String unionNo;
 
@@ -174,66 +174,30 @@ public class SinlgePlanDFLGenerator {
 			}
 		}
 
-		if (DecomposerUtils.REMOVE_OUTPUTS) {
-			log.debug("Removing Outputs...");
-			if (qs.size() > 1) {
-				List<SQLQuery> unions = qs.get(qs.size() - 1).getUnionqueries();
-				for (int i = qs.size() - 2; i > -1; i--) {
-
-					SQLQuery q = qs.get(i);
-					if (unions.contains(q)) {
-						continue;
-					}
-					List<Column> outputs = new ArrayList<Column>();
-					for (Output o : q.getOutputs()) {
-						outputs.add(new Column(q.getTemporaryTableName(), o.getOutputName()));
-					}
-					for (int j = qs.size() - 1; j > i; j--) {
-						if (qs.get(j).getOutputs().isEmpty()
-								&& qs.get(j).containsIputTable(q.getTemporaryTableName())) {
-							outputs.clear();
-							break;
-						}
-						List<Column> cols = qs.get(j).getAllColumns();
-						for (Column c2 : cols) {
-							if (c2.getBaseTable() != null) {
-								outputs.remove(new Column(c2.getAlias(), c2.getBaseTable() + "_" + c2.getName()));
-							} else {
-								outputs.remove(c2);
-							}
-						}
-						if (outputs.isEmpty()) {
-							break;
-						}
-					}
-					for (Column c3 : outputs) {
-						for (int k = 0; k < q.getOutputs().size(); k++) {
-							Output o = q.getOutputs().get(k);
-							if (o.getOutputName().equals(c3.getName())) {
-								q.getOutputs().remove(k);
-								q.setHashId(null);
-								k--;
-							}
-						}
-					}
-
-				}
-			}
-		}
+		
 
 		if (useSIP) {
 			boolean makeQueryForEachSip = true;
+			
 			System.out.println("initial size:" + qs.size());
 			if (makeQueryForEachSip) {
 				Map<String, Set<SQLQuery>> queriesToSip = new HashMap<String, Set<SQLQuery>>();
 				for (int i = 0; i < qs.size() - 1; i++) {
 					SQLQuery q = qs.get(i);
-					Set<SipJoin> sis = q.getSipInfo();
+					List<SipJoin> sis = q.getSipInfo();
 					if (sis != null && sis.size() > 0) {
 						// String si = sis.iterator().next().getSipName();
 						boolean most = false;
 						boolean checkPrevious = true;
+						boolean algorithmSelection =true;
 						String si = null;
+						if(algorithmSelection){
+							
+							si=q.getEstimatedSipjoin(qs, i, queriesToSip);
+						
+						}
+						else{
+						
 						if (most) {
 							if (checkPrevious) {
 								si = q.getMostProminentSipjoin(queriesToSip.keySet());
@@ -242,6 +206,7 @@ public class SinlgePlanDFLGenerator {
 							}
 						} else {
 							si = q.getLeastProminentSipjoin();
+						}
 						}
 						if (sis.size() > 1) {
 							System.out.println("size>1:" + sis.size());
@@ -256,8 +221,23 @@ public class SinlgePlanDFLGenerator {
 						}
 					}
 				}
+				
 				SQLQuery union = qs.get(qs.size() - 1);
-
+				for (String si : queriesToSip.keySet()) {
+					System.out.println("no of sip:" + queriesToSip.get(si).size());
+					if(queriesToSip.get(si).size()==1){
+						continue;
+					}
+					if (si != null) {
+						for (SQLQuery s : queriesToSip.get(si)) {
+							s.addSipJoin(si);
+						}
+					}
+				}
+				
+				if(DecomposerUtils.REMOVE_OUTPUTS) {
+					removeOutputs(qs);
+				}
 				for (String si : queriesToSip.keySet()) {
 					System.out.println("no of sip:" + queriesToSip.get(si).size());
 					if(queriesToSip.get(si).size()==1){
@@ -283,12 +263,14 @@ public class SinlgePlanDFLGenerator {
 					// SQLQuery mostTables = null;
 					// int noTables = 0;
 					// int lastQ = 0;
-
+					boolean combine=true;
+					if(combine){
 					for (SQLQuery s : queriesToSip.get(si)) {
 						union.getUnionqueries().remove(s);
 						qs.remove(s);
-						s.addSipJoin(si);
+						//s.addSipJoin(si);
 					}
+					
 					SQLQuery toReplace = new SQLQuery();
 					StringBuffer toRepl = new StringBuffer();
 					toRepl.append("select * from (");
@@ -331,6 +313,13 @@ public class SinlgePlanDFLGenerator {
 						qs.remove(union);
 					}
 				}
+				/*	else{
+						for (SQLQuery s : queriesToSip.get(si)) {
+							s.addSipJoin(si);
+						}
+						
+					}*/
+				}
 
 			}
 			if (!makeQueryForEachSip) {
@@ -341,7 +330,7 @@ public class SinlgePlanDFLGenerator {
 				for (int i = 0; i < qs.size() - 1; i++) {
 					// check to remove sips that are used only once
 					SQLQuery q = qs.get(i);
-					Set<SipJoin> sis = q.getSipInfo();
+					List<SipJoin> sis = q.getSipInfo();
 					if (sis != null && sis.size() > 0) {
 						for (SipJoin sj : sis) {
 							
@@ -390,10 +379,13 @@ public class SinlgePlanDFLGenerator {
 			}
 
 			System.out.println("final size:" + qs.size());
+		} else if(DecomposerUtils.REMOVE_OUTPUTS) {
+			removeOutputs(qs);
 		}
 
-		// remove not needed columns from nested subqueries
-
+		
+		
+		
 		boolean mergeUnions = true;
 		if (mergeUnions && qs.size() > 50) {
 			SQLQuery last = qs.get(qs.size() - 1);
@@ -416,6 +408,54 @@ public class SinlgePlanDFLGenerator {
 			}
 		}
 		return qs;
+	}
+
+	private void removeOutputs(ResultList qs) {
+		log.debug("Removing Outputs...");
+		if (qs.size() > 1) {
+			List<SQLQuery> unions = qs.get(qs.size() - 1).getUnionqueries();
+			for (int i = qs.size() - 2; i > -1; i--) {
+
+				SQLQuery q = qs.get(i);
+				if (unions.contains(q)) {
+					continue;
+				}
+				List<Column> outputs = new ArrayList<Column>();
+				for (Output o : q.getOutputs()) {
+					outputs.add(new Column(q.getTemporaryTableName(), o.getOutputName()));
+				}
+				for (int j = qs.size() - 1; j > i; j--) {
+					if (qs.get(j).getOutputs().isEmpty()
+							&& qs.get(j).containsIputTable(q.getTemporaryTableName())) {
+						outputs.clear();
+						break;
+					}
+					List<Column> cols = qs.get(j).getAllColumns();
+					for (Column c2 : cols) {
+						if (c2.getBaseTable() != null) {
+							outputs.remove(new Column(c2.getAlias(), c2.getBaseTable() + "_" + c2.getName()));
+						} else {
+							outputs.remove(c2);
+						}
+					}
+					if (outputs.isEmpty()) {
+						break;
+					}
+				}
+				for (Column c3 : outputs) {
+					for (int k = 0; k < q.getOutputs().size(); k++) {
+						Output o = q.getOutputs().get(k);
+						if (o.getOutputName().equals(c3.getName())) {
+							q.getOutputs().remove(k);
+							q.setHashId(null);
+							k--;
+						}
+					}
+				}
+
+			}
+		}
+		
 	}
 
 	private void printPlan(MemoKey key) {

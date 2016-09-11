@@ -5,6 +5,7 @@ package madgik.exareme.master.queryProcessor.decomposer.query;
 
 import madgik.exareme.master.queryProcessor.decomposer.DecomposerUtils;
 import madgik.exareme.master.queryProcessor.decomposer.dag.Node;
+import madgik.exareme.master.queryProcessor.decomposer.dag.ResultList;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoReaderDB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.NamesToAliases;
 import madgik.exareme.master.queryProcessor.decomposer.federation.SipInfo;
@@ -71,7 +72,7 @@ public class SQLQuery {
 
 	private List<Operand> joinOperands;
 
-	private Set<SipJoin> sis;
+	private List<SipJoin> sis;
 	private String sql;
 	private boolean isStringSQL;
 	private boolean isCreateIndex;
@@ -2053,13 +2054,14 @@ public class SQLQuery {
 	public void addSipInfo(SipJoin si) {
 		if (this.sis == null) {
 			// this.deleteSipInfo();
-			this.sis = new HashSet<SipJoin>();
+			this.sis = new ArrayList<SipJoin>();
 		}
-		this.sis.add(si);
+		if(!this.sis.contains(si)){
+			this.sis.add(0, si);
+		}
+		}
 
-	}
-
-	public Set<SipJoin> getSipInfo() {
+	public List<SipJoin> getSipInfo() {
 		return sis;
 	}
 
@@ -2540,6 +2542,38 @@ public class SQLQuery {
 			}
 		}
 		return false;
+	}
+
+	public String getEstimatedSipjoin(ResultList qs, int i, Map<String, Set<SQLQuery>> queriesToSip) {
+		double weight=0.5;
+		if (this.sis != null) {
+			double best = 0;
+			String result = null;
+			for (SipJoin sj : this.sis) {
+				double tempScore=0;
+				if(queriesToSip.containsKey(sj.getSipName())){
+					tempScore+=queriesToSip.get(sj.getSipName()).size();
+				}
+				for(int j=i+1;j<qs.size();j++){
+					SQLQuery next=qs.get(j);
+					if(next.getSipInfo()!=null){
+					for(SipJoin nextSj:next.getSipInfo()){
+						if(nextSj.getSipName().equals(sj.getSipName())){
+							tempScore++;
+							break;
+						}
+					}
+					}
+				}
+				tempScore=weight*(this.inputTables.size()-sj.getNumber())*tempScore;
+				if(best<tempScore){
+					best=tempScore;
+					result=sj.getSipName();
+				}
+			}
+			return result;
+		}
+		return null;
 	}
 
 }

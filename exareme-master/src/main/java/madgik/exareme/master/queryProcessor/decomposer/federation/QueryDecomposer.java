@@ -747,7 +747,6 @@ public class QueryDecomposer {
 										newBwc.setLeftOp(bwc.getLeftOp());
 										associativity.setObject(newBwc);
 										associativity.addChild(op.getChildAt(0));
-
 										if (comesFromLeftOp) {
 											associativity.addChild(c3.getChildAt(0));
 
@@ -782,6 +781,7 @@ public class QueryDecomposer {
 											Node dummy = new Node(Node.OR);
 											// dummy node corresponding to
 											// cartesian product
+											 
 											String n1 = op.getChildAt(0).getObject().toString();
 											dummy.addAllDescendantBaseTables(
 													op.getChildAt(0).getDescendantBaseTables());
@@ -789,7 +789,7 @@ public class QueryDecomposer {
 												String n2 = c3.getChildAt(1).getObject().toString();
 												dummy.addAllDescendantBaseTables(
 														c3.getChildAt(1).getDescendantBaseTables());
-												if (n1.compareTo(n2) > 0) {
+												if (op.getChildAt(0).getHashId().toString().compareTo(c3.getChildAt(1).getHashId().toString()) > 0) {
 													dummy.setObject(n1 + n2);
 												} else {
 													dummy.setObject(n2 + n1);
@@ -803,7 +803,7 @@ public class QueryDecomposer {
 												String n2 = c3.getChildAt(0).getObject().toString();
 												dummy.addAllDescendantBaseTables(
 														c3.getChildAt(0).getDescendantBaseTables());
-												if (n1.compareTo(n2) > 0) {
+												if ((op.getChildAt(0).getHashId().toString().compareTo(c3.getChildAt(0).getHashId().toString())) > 0) {
 													dummy.setObject(n1 + n2);
 												} else {
 													dummy.setObject(n2 + n1);

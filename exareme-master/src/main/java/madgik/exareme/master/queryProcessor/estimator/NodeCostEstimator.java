@@ -165,9 +165,9 @@ public class NodeCostEstimator {
         if (Double.isNaN(responseTime)) {
             throw new Exception("NaN");
         }
-        //to fix inswx usage
-        if((nuwc.getLeftOp().toString().contains("cmpNpdidCompany")&&left.getDescendantBaseTables().size()==1)||(nuwc.getRightOp().toString().contains("wlbDrillingOperator")&&o.getFirstParent().getFirstParent().getOpCode()!=Node.PROJECT)){
-        	responseTime=30*responseTime;
+        //to fix index usage
+        if(((left.getDescendantBaseTables().size()==1&&left.getDescendantBaseTables().contains("alias1"))||nuwc.getLeftOp().toString().contains("cmpLongName")&&left.getDescendantBaseTables().size()>1)||nuwc.getRightOp().toString().contains("wlbDrillingOperator")||nuwc.getRightOp().toString().contains("prlName")){
+        	responseTime=50*responseTime;
         }
       
         return responseTime+leftScanCost;

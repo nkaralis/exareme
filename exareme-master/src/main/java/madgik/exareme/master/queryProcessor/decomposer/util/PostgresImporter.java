@@ -32,14 +32,14 @@ public class PostgresImporter {
 		boolean analyze=true;
 		boolean analyzeSQLITE=false;
 		boolean vacuum = false;
-		String path="/media/dimitris/T/exaremelubm100/";
+		String path="/media/dimitris/T/exaremenpd500new/";
 		DB dbinfo=new DB("ex");
 		dbinfo.setSchema("public");
 		dbinfo.setDriver("org.postgresql.Driver");
 		dbinfo.setPass("gray769watt724!@#");
 		dbinfo.setUser("postgres");
-		dbinfo.setMadisString("postgres h:localhost port:5432 u:postgres p:gray769watt724!@# db:npd_vig_scale1");
-		dbinfo.setURL("jdbc:postgresql://localhost/npd_vig_scale1");
+		dbinfo.setMadisString("postgres h:localhost port:5432 u:postgres p:gray769watt724!@# db:npd_new_scale500");
+		dbinfo.setURL("jdbc:postgresql://localhost/npd_new_scale500");
 		DB dbinfo2=new DB("ex2");
 		dbinfo2.setSchema("lubm100");
 		dbinfo2.setDriver("com.mysql.jdbc.Driver");
@@ -47,21 +47,21 @@ public class PostgresImporter {
 		dbinfo2.setUser("root");
 		dbinfo2.setMadisString("mysql h:127.0.0.1 u:root db:lubm100");
 		dbinfo2.setURL("jdbc:mysql://127.0.0.1:3306/lubm100");
-		/*String url = "jdbc:postgresql://localhost/npd_vig_scale1";
+		String url = "jdbc:postgresql://localhost/npd_new_scale100";
 		Properties props = new Properties();
 		props.setProperty("user","postgres");
 		props.setProperty("password","gray769watt724!@#");
 		props.setProperty("ssl","true");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});*/
-		String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
+		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});
+		/*String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
 		Properties props = new Properties();
 		props.setProperty("user","root");
 		props.setProperty("password","");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});
+		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});*/
 		while (rs.next()) {
 			String tablename=rs.getString(3);
 			//if(tablename.compareTo("field_reserves")<0){
@@ -72,8 +72,8 @@ public class PostgresImporter {
 			//}
 			SQLQuery s=new SQLQuery();
 			s.setFederated(true);
-			s.setMadisFunctionString("mysql h:localhost u:root");
-			s.setTemporaryTableName(tablename);
+			s.setMadisFunctionString("postgres h:localhost u:root");
+			s.setTemporaryTableName(tablename.toLowerCase());
 			s.addInputTable(new Table(tablename, tablename));
 			ResultSet rs2 = md.getColumns(null, null, rs.getString(3), null);
 			Set<String> attrs = new HashSet<String>();
@@ -95,25 +95,52 @@ public class PostgresImporter {
 	            }
 	            rs3.close();*/
 	            if(importtables){
+	            	ResultSet rs3 = md.getPrimaryKeys(null, null, rs.getString(3));
+	    			int keys=0;
+	    			String keyDeclaration="";
+	    			String del="";
+	    	            while (rs3.next()) {
+	    	            	keys++;
+	    	            	String columnname=rs3.getString(4);
+	    	            	keyDeclaration+=del+columnname;
+	    	            	del=", ";
+	    	            //	if(!columnname.equalsIgnoreCase("dscNpdidDiscovery")){
+	    	            //		continue;
+	    	           // 	}
+	    	                //Column c=new Column(tablename, columnname);
+	    	            }
+	    	            rs3.close();
+	    	            if(keys>0){
+	    	            	keyDeclaration=" ,PRIMARY KEY("+keyDeclaration+")";
+	    	            }
+	    	            if(keys>1){
+	    	            	
+	    	            }
 	           ExecutorService es = Executors.newCachedThreadPool();
 						DataImporter di = new DataImporter(s, path, dbinfo);
 						di.setAddToRegisrty(true);
+						di.setPrimaryKey(keyDeclaration);
+							if(keys>1){
+	    	            	di.setWithoutRowID(true);
+	    	            }
 						es.execute(di);
 				es.shutdown();
 				es.awaitTermination(40, TimeUnit.MINUTES);
 	            }
 	            if(analyze){
-	            	tablename="teachersdocD34095a8bedf4480491c70a48a17e24abal";
-	            	attrs.clear();
-	            	attrs.add("docD");
+	            	//tablename="pipLine";
+	            	//attrs.clear();
+	            	//attrs.add("pipNpdidPipe");
+	            	//if(!tablename.toLowerCase().equals(tablename)){
 					OptiqueAnalyzer fa = new OptiqueAnalyzer(path, dbinfo);
 					fa.setUseDataImporter(false);
 					System.out.println("analyzing: "+tablename);
-					Schema sch = fa.analyzeAttrs(tablename, attrs);
+					Schema sch = fa.analyzeAttrs(tablename.toLowerCase(), attrs);
 					// change table name back to adding DB id
 					
 					StatUtils.addSchemaToFile(path + "histograms.json", sch);
-					break;
+					//break;
+	            	//}
 	            }
 	            if(analyzeSQLITE){
 	            	Class.forName("org.sqlite.JDBC");
@@ -121,7 +148,7 @@ public class PostgresImporter {
 	   			 config.setCacheSize(1200000);
 	   			 config.setPageSize(4096);
 	   			 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
-	   			    dataSource.setUrl("jdbc:sqlite:"+path+tablename.replace("NCS", "ncs")+".0.db");
+	   			    dataSource.setUrl("jdbc:sqlite:"+path+tablename.toLowerCase().replace("NCS", "ncs")+".0.db");
 	   			    dataSource.setConfig(config);
 	   			Connection connection=dataSource.getConnection();//DriverManager.getConnection("jdbc:sqlite:test.db");
 	   			Statement st=connection.createStatement();
@@ -136,7 +163,7 @@ public class PostgresImporter {
 	   			 config.setCacheSize(1200000);
 	   			 config.setPageSize(4096);
 	   			 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
-	   			    dataSource.setUrl("jdbc:sqlite:"+path+tablename.replace("NCS", "ncs")+".0.db");
+	   			    dataSource.setUrl("jdbc:sqlite:"+path+tablename.toLowerCase().replace("NCS", "ncs")+".0.db");
 	   			    dataSource.setConfig(config);
 	   			Connection connection=dataSource.getConnection();//DriverManager.getConnection("jdbc:sqlite:test.db");
 	   			Statement st=connection.createStatement();

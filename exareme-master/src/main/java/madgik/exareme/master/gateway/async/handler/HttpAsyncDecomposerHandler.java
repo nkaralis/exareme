@@ -14,6 +14,7 @@ import madgik.exareme.master.connector.local.AdpDBQueryExecutorThread;
 import madgik.exareme.master.connector.rmi.AdpDBNetReaderThread;
 import madgik.exareme.master.engine.AdpDBManager;
 import madgik.exareme.master.engine.AdpDBManagerLocator;
+import madgik.exareme.master.engine.executor.SQLiteLocalExecutor;
 import madgik.exareme.master.gateway.ExaremeGatewayUtils;
 import madgik.exareme.master.queryProcessor.analyzer.fanalyzer.OptiqueAnalyzer;
 import madgik.exareme.master.queryProcessor.analyzer.stat.StatUtils;
@@ -23,6 +24,7 @@ import madgik.exareme.master.queryProcessor.decomposer.dag.NodeHashValues;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoReaderDB;
 import madgik.exareme.master.queryProcessor.decomposer.federation.DBInfoWriterDB;
+import madgik.exareme.master.queryProcessor.decomposer.federation.DataImporter;
 import madgik.exareme.master.queryProcessor.decomposer.federation.NamesToAliases;
 import madgik.exareme.master.queryProcessor.decomposer.federation.QueryDecomposer;
 import madgik.exareme.master.queryProcessor.decomposer.query.Operand;
@@ -42,6 +44,8 @@ import org.apache.http.nio.protocol.*;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
+import org.sqlite.SQLiteOpenMode;
+import org.sqlite.javax.SQLiteConnectionPoolDataSource;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -53,10 +57,12 @@ import java.io.PipedOutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Exareme Decomposer Handler.
@@ -100,6 +106,9 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 		final String dbname = inputContent.get(ExaremeGatewayUtils.REQUEST_DATABASE);
 		final String query = inputContent.get(ExaremeGatewayUtils.REQUEST_QUERY);
 		final int workers = ArtRegistryLocator.getArtRegistryProxy().getContainers().length;
+		
+		final boolean local=false;
+		final int threads=8;
 
 		log.debug("--DB " + dbname);
 		log.debug("--Query " + query);
@@ -475,6 +484,10 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							log.debug("SQL Query Decomposing ...");
 							log.debug("Number of workers: " + workers);
 							subqueries = d.getSubqueries();
+							if(local){
+								executeLocal(subqueries, path);
+								return;
+							}
 							String decomposedQuery = "";
 							String resultTblName = "";
 							if(DecomposerUtils.WRITE_ALIASES){
@@ -586,6 +599,102 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 					httpResponse.setEntity(new StringEntity(e.getMessage(), ContentType.TEXT_PLAIN));
 				}
 				httpExchange.submitResponse(new BasicAsyncResponseProducer(httpResponse));
+			}
+
+			private void executeLocal(List<SQLQuery> subqueries, String path) throws ClassNotFoundException, SQLException, InterruptedException {
+				// TODO Auto-generated method stub
+				Set<String> inputTables=new HashSet<String>();
+				
+				String resultName=subqueries.get(subqueries.size()-1).getTemporaryTableName();
+				Class.forName("org.sqlite.JDBC");
+				 org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
+				// config.setSharedCache(true);
+			//	config.enableLoadExtension(true);
+				// config.setOpenMode(SQLiteOpenMode.READWRITE);
+				// config.setOpenMode(SQLiteOpenMode.CREATE);
+				 //config.setOpenMode(SQLiteOpenMode.NOMUTEX);
+				// config.setOpenMode(SQLiteOpenMode.SHAREDCACHE);
+				// config.setSharedCache(true);
+				 
+				 //config.setCacheSize(2400000);
+				 //config.setPageSize(4096);
+				 //config.setLockingMode(mode);
+				 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
+				    dataSource.setUrl("jdbc:sqlite:file:/media/dimitris/T/tmp/asssasasas?nolock=1&immutable=1");
+				// dataSource.setUrl("jdbc:sqlite::memory:");
+				    dataSource.setConfig(config);
+				    //=dataSource.getConnection();//
+				Connection connection=DriverManager.getConnection("jdbc:sqlite:file:/media/dimitris/T/tmp/asssasasas?nolock=1&immutable=1");
+				
+				//outofmemory
+				
+				Statement stmt=connection.createStatement();
+				//stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
+				//stmt.execute("PRAGMA threads = 8");
+				stmt.execute("PRAGMA auto_vacuum = NONE"); 
+				stmt.execute("PRAGMA journal_mode = OFF");
+				stmt.execute("PRAGMA synchronous = OFF");
+				stmt.execute("PRAGMA ignore_check_constraints = true");
+				/*stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
+				stmt.execute("PRAGMA automatic_index = TRUE");
+				
+				stmt.execute("PRAGMA page_size = 4096");
+				stmt.execute("PRAGMA cache_size = 2400000");*/
+				//stmt.execute("select load_extension('/home/dimitris/virtualtables/unionsiptext')");
+				//stmt.execute("PRAGMA journal_mode = WAL");
+				//stmt.execute("PRAGMA read_uncommited = TRUE");
+				
+				//connection.createStatement().execute("pragma temp_store=MEMORY");
+				//connection.createStatement().execute("PRAGMA temp_store_directory = '/media/dimitris/T/tmp/'");
+				//
+				Set<String> tblnames=new HashSet<String>();
+				for(SQLQuery q: subqueries){
+					for(Table t:q.getInputTables()){
+						if(!t.getName().startsWith("table")){
+							if(t.getName().startsWith("siptable")){
+								t.setName(t.getAlias());
+								if(tblnames.add(t.getName()))
+								stmt.execute("create virtual table "+t.getName()+" using unionsiptext");
+							}
+							else{
+								if(tblnames.add(t.getName()))
+								stmt.execute("ATTACH 'file:"+path+t.getName()+".0.db?nolock=1' AS "+ t.getName());
+							}
+							}
+	
+					}
+				}
+				
+				stmt.close();
+			//	connection.setAutoCommit(false);
+				//s.setFetchSize(10000);
+				//s.execute("PRAGMA cache_size = 600000");
+				
+				
+				 
+			     
+				ExecutorService es = Executors.newFixedThreadPool(8);
+
+				for (int i = 0; i < subqueries.size()-1; i++) {
+					SQLQuery q = subqueries.get(i);
+					
+					SQLiteLocalExecutor di = new SQLiteLocalExecutor(q, connection, true);
+						es.execute(di);
+				}
+				es.shutdown();
+				boolean finished = es.awaitTermination(300, TimeUnit.MINUTES);
+				ExecutorService es2 = Executors.newSingleThreadExecutor();
+				if(finished){
+				//	connection.commit();
+					SQLiteLocalExecutor di = new SQLiteLocalExecutor(subqueries.get(subqueries.size()-1), connection, false);
+					es2.execute(di);
+				es2.shutdown();
+				finished = es2.awaitTermination(300, TimeUnit.MINUTES);
+				if(finished){
+			//	connection.commit();
+				connection.close();
+				System.out.println(System.currentTimeMillis());}
+				}
 			}
 		}.start();
 	}
