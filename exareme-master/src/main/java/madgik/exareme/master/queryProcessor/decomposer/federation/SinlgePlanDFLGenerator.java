@@ -450,7 +450,7 @@ public class SinlgePlanDFLGenerator {
 
 		SQLQuery last = qs.get(qs.size() - 1);
 		int merge=DecomposerUtils.MERGE_UNIONS;
-		if (merge>0 && last.getUnionqueries().size() > merge) {
+		while (merge>0 && last.getUnionqueries().size() > merge) {
 
 			SQLQuery current = new SQLQuery();
 			// random hash, to fix
