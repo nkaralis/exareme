@@ -8,16 +8,16 @@ import madgik.exareme.master.queryProcessor.decomposer.query.UnaryWhereCondition
 
 public class ViewInfo {
 
-	private String outColumn;
+	private Set<String> outColumns;
 	private Set<UnaryWhereCondition> unaryConditions;
 	private Set<NonUnaryWhereCondition> binaryConditions;
 	private String viewName;
 	private boolean or;
 
-	public ViewInfo(String name, String outColumn) {
+	public ViewInfo(String name, Set<String> outputs) {
 		super();
 		this.viewName = name;
-		this.outColumn = outColumn;
+		this.outColumns = outputs;
 		unaryConditions = new HashSet<UnaryWhereCondition>();
 		binaryConditions = new HashSet<NonUnaryWhereCondition>();
 		or=false;
@@ -40,7 +40,7 @@ public class ViewInfo {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((binaryConditions == null) ? 0 : binaryConditions.hashCode());
-		result = prime * result + ((outColumn == null) ? 0 : outColumn.hashCode());
+		result = prime * result + ((outColumns == null) ? 0 : outColumns.hashCode());
 		result = prime * result + ((unaryConditions == null) ? 0 : unaryConditions.hashCode());
 		result = prime * result + ((viewName == null) ? 0 : viewName.hashCode());
 		return result;
@@ -60,10 +60,10 @@ public class ViewInfo {
 				return false;
 		} else if (!binaryConditions.equals(other.binaryConditions))
 			return false;
-		if (outColumn == null) {
-			if (other.outColumn != null)
+		if (outColumns == null) {
+			if (other.outColumns != null)
 				return false;
-		} else if (!outColumn.equals(other.outColumn))
+		} else if (!outColumns.equals(other.outColumns))
 			return false;
 		if (unaryConditions == null) {
 			if (other.unaryConditions != null)
@@ -79,16 +79,21 @@ public class ViewInfo {
 	}
 
 	public boolean containsCondition(Object o) {
-		if (o instanceof NonUnaryWhereCondition)
-			return binaryConditions.contains(o);
+		if (o instanceof NonUnaryWhereCondition){
+			if(binaryConditions.size()==1){
+			return binaryConditions.iterator().next().equals(o);}
+			else{
+				return binaryConditions.contains(o);
+			}
+		}
 		else if (o instanceof UnaryWhereCondition)
 			return unaryConditions.contains(o);
 		else
 			return false;
 	}
 
-	public String getOutput() {
-		return this.outColumn;
+	public Set<String> getOutput() {
+		return this.outColumns;
 	}
 
 	public String getTableName() {

@@ -21,7 +21,6 @@ public class NonUnaryWhereCondition implements Operand {
 	// private Operand leftOp;
 	// private Operand rightOp;
 	String operator;
-	private HashCode hash = null;
 
 	public NonUnaryWhereCondition() {
 		super();
@@ -53,7 +52,6 @@ public class NonUnaryWhereCondition implements Operand {
 
 	public void setOperator(String op) {
 		this.operator = op;
-		hash = null;
 	}
 
 	public String getOperator() {
@@ -108,7 +106,6 @@ public class NonUnaryWhereCondition implements Operand {
 		} else {
 			this.ops.set(0, op);
 		}
-		hash = null;
 	}
 
 	public void setRightOp(Operand op) {
@@ -120,7 +117,6 @@ public class NonUnaryWhereCondition implements Operand {
 		} else {
 			this.ops.set(1, op);
 		}
-		hash = null;
 	}
 
 	@Override
@@ -131,25 +127,23 @@ public class NonUnaryWhereCondition implements Operand {
 			opsCloned.add(o.clone());
 		}
 		cloned.ops = opsCloned;
-		cloned.hash = hash;
 		return cloned;
 	}
 
 	public void setOperandAt(int i, Operand op) {
 		this.ops.set(i, op);
-		hash = null;
 	}
 
 	public void addOperand(Operand op) {
 		this.ops.add(op);
-		hash = null;
 	}
 
 	@Override
 	public int hashCode() {
+		boolean unorder = this.operator.toLowerCase().equals("and") || this.operator.toLowerCase().equals("or");
 		int hash = 3;
 		for (Operand o : this.ops) {
-			if (this.operator.equals("=")) {
+			if (unorder || this.operator.equals("=")) {
 				// in join commutativity does not affect the result
 
 				hash += (o != null ? o.hashCode() : 0);
@@ -171,17 +165,28 @@ public class NonUnaryWhereCondition implements Operand {
 			return false;
 		}
 		final NonUnaryWhereCondition other = (NonUnaryWhereCondition) obj;
-		if(this.operator.equals("=")&& this.getAllColumnRefs().size()==1){
-			Set<Operand> thisOps=new HashSet<Operand>(this.ops);
-			Set<Operand> otherOps=new HashSet<Operand>(other.ops);
-			if (this.ops != other.ops && (thisOps == null || !thisOps.equals(otherOps))) {
+		boolean unorder = this.operator.toLowerCase().equals("and") || this.operator.toLowerCase().equals("or");
+
+		if (unorder) {
+			Set<Operand> thisOps = new HashSet<Operand>();
+			this.getUnorderedOperands(thisOps);//new HashSet<Operand>(this.ops);
+			Set<Operand> otherOps =new HashSet<Operand>();
+			other.getUnorderedOperands(otherOps);//new HashSet<Operand>(other.ops);
+			if (this.ops != other.ops && !thisOps.equals(otherOps)) {
 				return false;
 			}
 		}
-		else{
-		if (this.ops != other.ops && (this.ops == null || !this.ops.equals(other.ops))) {
-			return false;
+		else if (this.operator.equals("=") && this.getAllColumnRefs().size() == 1) {
+			Set<Operand> thisOps = new HashSet<>(this.ops);
+			Set<Operand> otherOps =new HashSet<>(other.ops);
+			if (this.ops != other.ops && !thisOps.equals(otherOps)) {
+				return false;
+			}
 		}
+		else {
+			if (this.ops != other.ops && (this.ops == null || !this.ops.equals(other.ops))) {
+				return false;
+			}
 		}
 		if ((this.operator == null) ? (other.operator != null) : !this.operator.equals(other.operator)) {
 			return false;
@@ -205,16 +210,14 @@ public class NonUnaryWhereCondition implements Operand {
 
 	@Override
 	public HashCode getHashID() {
-		if (hash == null) {
-			List<HashCode> codes = new ArrayList<HashCode>();
-			for (Operand o : this.ops) {
-				codes.add(o.getHashID());
-			}
-			codes.add(Hashing.sha1().hashBytes(operator.toUpperCase().getBytes()));
-
-			hash = Hashing.combineOrdered(codes);
+		List<HashCode> codes = new ArrayList<HashCode>();
+		for (Operand o : this.ops) {
+			codes.add(o.getHashID());
 		}
-		return hash;
+		codes.add(Hashing.sha1().hashBytes(operator.toUpperCase().getBytes()));
+
+		return Hashing.combineOrdered(codes);
+
 	}
 
 	public boolean referencesAtMostOneTable() {
@@ -234,31 +237,30 @@ public class NonUnaryWhereCondition implements Operand {
 	public Set<NonUnaryWhereCondition> getOrConditions() {
 		Set<NonUnaryWhereCondition> result = new HashSet<NonUnaryWhereCondition>();
 		if (this.operator.equals("=")) {
-			if((this.getLeftOp() instanceof Column||this.getLeftOp() instanceof Constant)&&
-					(this.getRightOp() instanceof Column||this.getRightOp() instanceof Constant)){
-			result.add(this);
-			return result;}
-			else{
+			if ((this.getLeftOp() instanceof Column || this.getLeftOp() instanceof Constant)
+					&& (this.getRightOp() instanceof Column || this.getRightOp() instanceof Constant)) {
+				result.add(this);
+				return result;
+			} else {
 				return null;
 			}
-		} else if (this.operator.equalsIgnoreCase("OR") && (this.getLeftOp() instanceof NonUnaryWhereCondition
-				||this.getLeftOp() instanceof BinaryOperand)
-				&& (this.getRightOp() instanceof NonUnaryWhereCondition) ||this.getRightOp() instanceof BinaryOperand){
+		} else if (this.operator.equalsIgnoreCase("OR")
+				&& (this.getLeftOp() instanceof NonUnaryWhereCondition || this.getLeftOp() instanceof BinaryOperand)
+				&& (this.getRightOp() instanceof NonUnaryWhereCondition)
+				|| this.getRightOp() instanceof BinaryOperand) {
 			Set<NonUnaryWhereCondition> left = null;
-			if(this.getLeftOp() instanceof NonUnaryWhereCondition){
-				left=((NonUnaryWhereCondition) this.getLeftOp()).getOrConditions();
-			}
-			else if(this.getLeftOp() instanceof BinaryOperand){
-				left=((BinaryOperand) this.getLeftOp()).getOrConditions();
+			if (this.getLeftOp() instanceof NonUnaryWhereCondition) {
+				left = ((NonUnaryWhereCondition) this.getLeftOp()).getOrConditions();
+			} else if (this.getLeftOp() instanceof BinaryOperand) {
+				left = ((BinaryOperand) this.getLeftOp()).getOrConditions();
 			}
 			if (left == null)
 				return null;
-			Set<NonUnaryWhereCondition> right =  null;
-			if(this.getRightOp() instanceof NonUnaryWhereCondition){
-				right=((NonUnaryWhereCondition) this.getRightOp()).getOrConditions();
-			}
-			else if(this.getLeftOp() instanceof BinaryOperand){
-				right=((BinaryOperand) this.getRightOp()).getOrConditions();
+			Set<NonUnaryWhereCondition> right = null;
+			if (this.getRightOp() instanceof NonUnaryWhereCondition) {
+				right = ((NonUnaryWhereCondition) this.getRightOp()).getOrConditions();
+			} else if (this.getLeftOp() instanceof BinaryOperand) {
+				right = ((BinaryOperand) this.getRightOp()).getOrConditions();
 			}
 			if (right == null)
 				return null;
@@ -269,6 +271,24 @@ public class NonUnaryWhereCondition implements Operand {
 			return null;
 		}
 
+	}
+
+	private void getUnorderedOperands(Set<Operand> ops) {
+		boolean unordered = this.operator.toLowerCase().equals("or");// ||this.operator.toLowerCase().equals("and");
+		if (unordered) {
+			ops.add(this.getLeftOp());
+			//Set<Operand> right = new HashSet<Operand>();
+			if (this.getRightOp() instanceof NonUnaryWhereCondition) {
+				NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) this.getRightOp();
+				nuwc.getUnorderedOperands(ops);
+			}
+			if (this.getRightOp() instanceof BinaryOperand) {
+				BinaryOperand bo = (BinaryOperand) this.getRightOp();
+				bo.getUnorderedOperands(ops);
+			}
+		} else {
+			ops.add(this);
+		}
 	}
 
 }

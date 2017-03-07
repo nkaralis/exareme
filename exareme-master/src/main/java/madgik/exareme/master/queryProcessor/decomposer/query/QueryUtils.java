@@ -161,6 +161,16 @@ public class QueryUtils {
 
 	public static Operand convertToMySQLDialect(Operand o) {
 		// returns CONCAT('a', b') from 'a' || 'b'
+		if (o instanceof Function) {
+			Function f=(Function)o;
+			Function result = new Function();
+			result.setFunctionName(f.getFunctionName());
+			result.setResultDistinct(f.getResultDistinct());
+			for(Operand op:f.getParameters()){
+				result.addParameter(convertToMySQLDialect(op));
+			}
+			return result;
+		}
 		if (o instanceof BinaryOperand) {
 			BinaryOperand bo = (BinaryOperand) o;
 			if (bo.getOperator().equalsIgnoreCase("||")) {
@@ -188,6 +198,10 @@ public class QueryUtils {
 			}
 			if (co.getCastType().equalsIgnoreCase("TIMESTAMP")) {
 				CastOperand signed = new CastOperand(convertToMySQLDialect(co.getCastOp()), "DATETIME");
+				return signed;
+			}
+			if (co.getCastType().startsWith("VARCHAR")) {
+				CastOperand signed = new CastOperand(convertToMySQLDialect(co.getCastOp()), "CHAR");
 				return signed;
 			}
 			return co;

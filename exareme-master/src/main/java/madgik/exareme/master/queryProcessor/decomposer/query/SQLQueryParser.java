@@ -15,7 +15,9 @@ import madgik.exareme.master.queryProcessor.decomposer.query.visitors.SQLQueryVi
 public class SQLQueryParser {
     public static SQLQuery parse(String queryString, NodeHashValues hashes) throws Exception {
         DistSQLParser parser = new DistSQLParser();
+        long sttt=System.currentTimeMillis();
         StatementNode node = parser.parseStatement(queryString);
+        System.out.println(System.currentTimeMillis()-sttt);
         //node.treePrint();
         // Traverse the qury tree
         SQLQuery query = new SQLQuery();

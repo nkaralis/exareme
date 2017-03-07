@@ -257,6 +257,7 @@ public class EmbeddedDB implements SQLDatabase {
 
   @Override
   public ResultSet executeAndGetResults(String query) throws SQLException {
+	  stmt.setFetchSize(10000);
     return stmt.executeQuery(query);
   }
 

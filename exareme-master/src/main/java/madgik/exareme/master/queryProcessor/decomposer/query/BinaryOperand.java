@@ -99,9 +99,18 @@ public class BinaryOperand implements Operand {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((leftOp == null) ? 0 : leftOp.hashCode());
-		result = prime * result + ((operator == null) ? 0 : operator.hashCode());
-		result = prime * result + ((rightOp == null) ? 0 : rightOp.hashCode());
+		boolean unorder=this.operator.toLowerCase().equals("and")||this.operator.toLowerCase().equals("or")||this.operator.equals("=");
+		if(unorder){
+			result = prime + result + ((leftOp == null) ? 0 : leftOp.hashCode());
+			result = prime + result + ((rightOp == null) ? 0 : rightOp.hashCode());
+			result = prime * result + ((operator == null) ? 0 : operator.hashCode());
+		}
+		else{
+			result = prime * result + ((leftOp == null) ? 0 : leftOp.hashCode());
+			result = prime * result + ((operator == null) ? 0 : operator.hashCode());
+			result = prime * result + ((rightOp == null) ? 0 : rightOp.hashCode());
+		}
+		
 		return result;
 	}
 
@@ -114,6 +123,21 @@ public class BinaryOperand implements Operand {
 		if (getClass() != obj.getClass())
 			return false;
 		BinaryOperand other = (BinaryOperand) obj;
+		
+		boolean unorder=this.operator.toLowerCase().equals("and")||this.operator.toLowerCase().equals("or")||this.operator.equals("=");
+
+		if(unorder){
+			Set<Operand> thisOps=new HashSet<Operand>();
+			thisOps.add(leftOp);
+			thisOps.add(rightOp);
+			Set<Operand> otherOps=new HashSet<Operand>();
+			otherOps.add(other.leftOp);
+			otherOps.add(other.rightOp);
+			if (thisOps.equals(otherOps)) {
+				return true;
+			}
+		}
+		
 		if (leftOp == null) {
 			if (other.leftOp != null)
 				return false;
@@ -170,6 +194,21 @@ public class BinaryOperand implements Operand {
 			return null;
 		}
 
+	}
+
+	public void getUnorderedOperands(Set<Operand> ops) {
+		boolean unordered = this.operator.toLowerCase().equals("or");// ||this.operator.toLowerCase().equals("and");
+		if (unordered) {
+			ops.add(this.getLeftOp());
+			//Set<Operand> right = new HashSet<Operand>();
+			
+			if (this.getRightOp() instanceof BinaryOperand) {
+				BinaryOperand bo = (BinaryOperand) this.getRightOp();
+				bo.getUnorderedOperands(ops);
+			}
+		} else {
+			ops.add(this);
+		}
 	}
 	
 }

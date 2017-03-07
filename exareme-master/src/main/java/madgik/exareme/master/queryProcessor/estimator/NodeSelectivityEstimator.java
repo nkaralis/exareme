@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import madgik.exareme.master.queryProcessor.analyzer.stat.StatUtils;
 import madgik.exareme.master.queryProcessor.decomposer.dag.Node;
 import madgik.exareme.master.queryProcessor.decomposer.query.*;
+import madgik.exareme.master.queryProcessor.estimator.db.AttrInfo;
 import madgik.exareme.master.queryProcessor.estimator.db.RelInfo;
 import madgik.exareme.master.queryProcessor.estimator.db.Schema;
 import madgik.exareme.master.queryProcessor.estimator.histogram.Histogram;
@@ -89,7 +90,7 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 
 	}
 
-	public void estimateFilter(Node n, Selection s, Node child) {
+	/*public void estimateFilter(Node n, Selection s, Node child) {
 		// Selection s = (Selection) n.getObject();
 		NodeInfo ni = new NodeInfo();
 		n.setNodeInfo(ni);
@@ -106,10 +107,38 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 			applyFilterToNode(nextFilter, n);
 		}
 
+	}*/
+	public void estimateFilter(Node n, Selection s, Node child) {
+		// Selection s = (Selection) n.getObject();
+		NodeInfo ni = new NodeInfo();
+		n.setNodeInfo(ni);
+		NodeInfo childInfo = child.getNodeInfo();
+
+		Set<Operand> filters = s.getOperands();
+
+		// RelInfo initRel = childInfo.getResultRel();
+		ni.setNumberOfTuples(childInfo.getNumberOfTuples());
+		ni.setTupleLength(childInfo.getTupleLength());
+		ni.setResultRel(new RelInfo(childInfo.getResultRel()));
+
+		// one select node can contain more than one filter!
+		for (Operand nextFilter : filters) {
+			applyFilterToNode(nextFilter, ni, child);
+		}
+
 	}
 
-	private void applyFilterToNode(Operand nextFilter, Node n) {
-		NodeInfo ni=n.getNodeInfo();
+	/*private void applyFilterToNode(Operand nextFilter, Node n) {
+		NodeInfo ni = n.getNodeInfo();
+		if (nextFilter instanceof BinaryOperand) {
+			BinaryOperand bo = (BinaryOperand) nextFilter;
+			NonUnaryWhereCondition nuwc = new NonUnaryWhereCondition();
+			nuwc.setLeftOp(bo.getLeftOp());
+			nuwc.setRightOp(bo.getRightOp());
+			nuwc.setOperator(bo.getOperator());
+			applyFilterToNode(nuwc, n);
+			return;
+		}
 		if (nextFilter instanceof UnaryWhereCondition) {
 			// normally you don't care for these conditions (Column IS NOT
 			// NULL)
@@ -139,7 +168,7 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 				// TODO fix estimation with OR conditions
 				// for now just return the one with higher cardinality
 				NodeInfo left = new NodeInfo();
-				Node dummyLeft=new Node(Node.OR);
+				Node dummyLeft = new Node(Node.OR);
 				dummyLeft.setNodeInfo(left);
 				left.setNumberOfTuples(ni.getNumberOfTuples());
 				left.setTupleLength(ni.getTupleLength());
@@ -147,23 +176,187 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 				applyFilterToNode(nuwc.getLeftOp(), dummyLeft);
 
 				NodeInfo right = new NodeInfo();
-				Node dummyRight=new Node(Node.OR);
-				dummyRight.setNodeInfo(left);
+				Node dummyRight = new Node(Node.OR);
+				dummyRight.setNodeInfo(right);
 				right.setNumberOfTuples(ni.getNumberOfTuples());
 				right.setTupleLength(ni.getTupleLength());
 				right.setResultRel(new RelInfo(ni.getResultRel()));
 				applyFilterToNode(nuwc.getLeftOp(), dummyRight);
+
+				if (left.getNumberOfTuples() > right.getNumberOfTuples()) {
+					n.setNodeInfo(left);
+				} else {
+					n.setNodeInfo(right);
+				}
+			} else {
+
+				Column col;
+				Constant con;
+
+				if (nuwc.getLeftOp() instanceof Column && nuwc.getRightOp() instanceof Column) {
+					estimateFilterJoin(n, nuwc);
+				} else {
+					if (nuwc.getLeftOp() instanceof Column) {// TODO: constant
+						col = (Column) nuwc.getLeftOp();
+						con = (Constant) nuwc.getRightOp();
+					} else {
+						col = (Column) nuwc.getRightOp();
+						con = (Constant) nuwc.getLeftOp();
+					}
+
+					// RelInfo lRel =
+					// this.schema.getTableIndex().get(col.tableAlias);
+					// RelInfo lRel = childInfo.getResultRel();
+					// RelInfo resultRel = new RelInfo(lRel);
+					// RelInfo resultRel = initRel;
+
+					Histogram resultHistogram = ni.getResultRel().getAttrIndex().get(col.getName()).getHistogram();
+
+					double filterValue = 0;
+					if (!con.isArithmetic()) {
+						if (con.getValue() instanceof String) {
+							String st = (String) con.getValue();
+							filterValue = StatUtils.hashString(con.getValue().toString());
+							String newSt = "";
+							if (st.startsWith("\'")) {
+								newSt = st.replaceAll("\'", "");
+								filterValue = StatUtils.hashString(newSt);
+							}
+
+						}
+
+					} else {
+						filterValue = Double.parseDouble(con.getValue().toString());
+					}
+
+					if (operator.equals("="))
+						resultHistogram.equal(filterValue);
+					else if (operator.equals(">="))
+						resultHistogram.greaterOrEqual(filterValue);
+					else if (operator.equals("<="))
+						resultHistogram.lessOrEqualValueEstimation(filterValue);
+					else if (operator.equals(">"))
+						resultHistogram.greaterThan(filterValue);
+					else if (operator.equals("<"))
+						resultHistogram.lessThanValueEstimation(filterValue);
+					// else f = new Filter(col.tableAlias, col.columnName,
+					// FilterOperand.NotEqual,
+					// Double.parseDouble(con.toString()));
+
+					// adjust RelInfo's histograms based on the resulting
+					// histogram
+					ni.getResultRel().adjustRelation(col.getName(), resultHistogram);
+
+					// TODO: fix NOdeInfo!!
+					ni.setNumberOfTuples(ni.getResultRel().getNumberOfTuples());
+					// ni.setTupleLength(ni.getResultRel().getTupleLength());
+					// ni.setResultRel(resultRel);
+				}
+			}
+		}
+
+	}*/
+	private AttrInfo getAttributeFromBase(String col, Node child, NodeInfo ni) {
+		if (child.getChildren().size() == 0 || child.getChildAt(0).getOpCode() != Node.BASEPROJECT) {
+			return null;
+		}
+		AttrInfo column = child.getChildAt(0).getChildAt(0).getNodeInfo().getResultRel().getAttrIndex().get(col);
+		return column;
+	}
+	
+	private void applyFilterToNode(Operand nextFilter, NodeInfo ni, Node child) {
+		if (nextFilter instanceof UnaryWhereCondition) {
+			UnaryWhereCondition uwc = (UnaryWhereCondition) nextFilter;
+			if (uwc.getType() == UnaryWhereCondition.LIKE) {
+				// for now treat like equality
+				// TODO treat properly
+				try {
+					Column col = uwc.getAllColumnRefs().get(0);
+					String con = uwc.getValue();
+					if (!ni.getResultRel().getAttrIndex().containsKey(col.getName())) {
+						AttrInfo att = getAttributeFromBase(col.toString(), child, ni);
+						if (att == null) {
+							log.error("Column not found in Attribute index: " + col.toString());
+							ni.setNumberOfTuples(ni.getResultRel().getNumberOfTuples());
+							return;
+						} else {
+							ni.getResultRel().getAttrIndex().put(col.toString(), att);
+						}
+					}
+					Histogram resultHistogram = ni.getResultRel().getAttrIndex().get(col.getName()).getHistogram();
+
+					double filterValue = 0;
+
+					filterValue = StatUtils.hashString(con);
+					String newSt = "";
+
+					// if (con.startsWith("\'")) {
+					newSt = con.replaceAll("\'", "").replaceAll("%", "");
+					if (uwc.getOperand().toString().toLowerCase().contains("lower")) {
+						newSt = newSt.toUpperCase();
+					}
+					if (uwc.getOperand().toString().toLowerCase().contains("upper")) {
+						newSt = newSt.toLowerCase();
+					}
+					filterValue = StatUtils.hashString(newSt);
+					// }
+					log.debug("LIKE operator, removing % :" + newSt);
+					resultHistogram.equal(filterValue);
+
+					ni.getResultRel().adjustRelation(col.getName(), resultHistogram);
+
+					// TODO: fix NOdeInfo!!
+					ni.setNumberOfTuples(ni.getResultRel().getNumberOfTuples());
+				} catch (Exception e) {
+					log.error("Could not compute selectivity for filter: " + nextFilter);
+				}
+
+			}
+			// normally you don't care for these conditions (Column IS NOT
+			// NULL)
+			// UnaryWhereCondition uwc = (UnaryWhereCondition) nextFilter;
+			// Table t=(Table) child.getObject();
+			// if(t.getName().startsWith("table")){
+			// not base table
+
+			// TODO: fix nodeInfo
+			// do nothing!
+
+			// this.planInfo.get(n.getHashId()).setNumberOfTuples(child.getNumberOfTuples());
+			// this.planInfo.get(n.getHashId()).setTupleLength(child.getTupleLength());
+			// System.out.println(uwc);
+		} else if (nextFilter instanceof NonUnaryWhereCondition) {
+			// TODO correct this!
+			NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) nextFilter;
+			// System.out.println(nuwc);
+			String operator = nuwc.getOperator(); // e.g. =, <, >
+
+			if (operator.equalsIgnoreCase("and")) {
+				applyFilterToNode(nuwc.getLeftOp(), ni, child);
+				applyFilterToNode(nuwc.getRightOp(), ni, child);
+			} else if (operator.equalsIgnoreCase("or")) {
+				log.warn("Filter with OR condition " + nuwc.toString()
+						+ ". Selectivity estimation will not be accurate");
+				// TODO fix estimation with OR conditions
+				// for now just return the one with higher cardinality
+				NodeInfo left = new NodeInfo();
+				left.setNumberOfTuples(ni.getNumberOfTuples());
+				left.setTupleLength(ni.getTupleLength());
+				left.setResultRel(new RelInfo(ni.getResultRel()));
+				applyFilterToNode(nuwc.getLeftOp(), left, child);
+
+				NodeInfo right = new NodeInfo();
+				right.setNumberOfTuples(ni.getNumberOfTuples());
+				right.setTupleLength(ni.getTupleLength());
+				right.setResultRel(new RelInfo(ni.getResultRel()));
+				applyFilterToNode(nuwc.getLeftOp(), right, child);
 
 				ni = left.getNumberOfTuples() > right.getNumberOfTuples() ? left : right;
 			} else {
 
 				Column col;
 				Constant con;
-				
-				if(nuwc.getLeftOp() instanceof Column && nuwc.getRightOp() instanceof Column){
-					estimateFilterJoin(n, nuwc);
-				}
-				else{
+
 				if (nuwc.getLeftOp() instanceof Column) {// TODO: constant
 					col = (Column) nuwc.getLeftOp();
 					con = (Constant) nuwc.getRightOp();
@@ -178,6 +371,27 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 				// RelInfo resultRel = new RelInfo(lRel);
 				// RelInfo resultRel = initRel;
 
+				// check to see if it is "cut" by base projection
+				
+				if (!ni.getResultRel().getAttrIndex().containsKey(col.getName())) {
+					AttrInfo att = getAttributeFromBase(col.toString(), child, ni);
+					if (att == null) {
+						log.error("Column not found in Attribute index: " + col.toString());
+						if (!ni.getResultRel().getAttrIndex().containsKey(col.toString())) {
+							col.setAlias(null);
+						}
+						if (!ni.getResultRel().getAttrIndex().containsKey(col.toString())) {
+							col.setName(col.getName().replaceAll("\"", ""));
+						}
+						if (att == null) {
+						ni.setNumberOfTuples(ni.getResultRel().getNumberOfTuples());
+						return;
+						}
+					} else {
+						ni.getResultRel().getAttrIndex().put(col.toString(), att);
+					}
+
+				}
 				Histogram resultHistogram = ni.getResultRel().getAttrIndex().get(col.getName()).getHistogram();
 
 				double filterValue = 0;
@@ -218,10 +432,10 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 				// ni.setTupleLength(ni.getResultRel().getTupleLength());
 				// ni.setResultRel(resultRel);
 			}
-			}
 		}
 
 	}
+
 
 	public void estimateJoin(Node n, NonUnaryWhereCondition nuwc, Node left, Node right) {
 		// NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) n.getObject();
@@ -270,7 +484,7 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 	}
 
 	public void estimateFilterJoin(Node n, NonUnaryWhereCondition nuwc) {
-		Node child=n.getChildAt(0).getChildAt(0);
+		Node child = n.getChildAt(0).getChildAt(0);
 		// NonUnaryWhereCondition nuwc = (NonUnaryWhereCondition) n.getObject();
 		NodeInfo ni = new NodeInfo();
 		Column l = (Column) nuwc.getLeftOp();
@@ -373,7 +587,7 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 		NodeInfo pi = new NodeInfo();
 		String tableAlias = ((Table) n.getObject()).getName();
 		RelInfo rel = this.schema.getTableIndex().get(tableAlias);
-		if(rel==null){
+		if (rel == null) {
 			rel = this.schema.getTableIndex().get(tableAlias.toLowerCase());
 		}
 		// RelInfo rel = this.planInfo.get(n.getHashId()).getResultRel();
@@ -387,27 +601,55 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 		pi.setResultRel(resultRel);
 		n.setNodeInfo(pi);
 	}
-	
-	public double getDuplicateEstimation(String table, Set<String> columns)
-	{
+
+	public double getDuplicateEstimation(String table, Set<String> columns) {
 		RelInfo rel = this.schema.getTableIndex().get(table);
-		double maxDiff=1;
-		if(columns.size()>1){
-			//TODO compute combined
-			return maxDiff;
-		}
-		for(String output:columns){
-			try{
-			if(rel.getAttrIndex().get(output).getHistogram().distinctValues()>maxDiff){
-				maxDiff=rel.getAttrIndex().get(output).getHistogram().distinctValues();
-			} }
-			catch(NullPointerException e){
+		double maxDiff = 1;
+		String minFreqCol = "";
+		double minfreq = rel.getNumberOfTuples();
+		for (String output : columns) {
+			try {
+				double diff = rel.getAttrIndex().get(output).getHistogram().distinctValues();
+				if (diff > maxDiff) {
+					maxDiff = diff;
+
+				}
+				if (rel.getNumberOfTuples() / diff < minfreq) {
+					minfreq = rel.getNumberOfTuples() / diff;
+					minFreqCol = output;
+				}
+
+			} catch (NullPointerException e) {
 				System.out.println("ddd");
 			}
 		}
-		return rel.getNumberOfTuples()/maxDiff;
+
+		// double no=rel.getNumberOfTuples();
+		// double result=1.0;
+		if(columns.size()>1){
+		for (String output : columns) {
+			if (output.equals(minFreqCol)) {
+				continue;
+			}
+			try {
+				minfreq = minfreq / rel.getAttrIndex().get(output).getHistogram().distinctValues();
+			} catch (NullPointerException e) {
+				System.out.println(e.getMessage());
+			}
+			if (maxDiff < 1.0) {
+				return 1.0;
+			}
+
+		}
+		return minfreq;
+		}
+		else{
+			return rel.getNumberOfTuples() / maxDiff;
+		}
 		
+
 	}
+
 	/* private-util methods */
 	public static double hashString(String str) {
 		if (str == null)
@@ -442,4 +684,74 @@ public class NodeSelectivityEstimator implements SelectivityEstimator {
 		}
 
 	}
+
+	public static double getDuplicateEstimation(NodeInfo r, Set<String> columns) {
+		
+		
+		
+		RelInfo rel = r.getResultRel();
+		double maxDiff = 1;
+		String minFreqCol = "";
+		double minfreq = rel.getNumberOfTuples();
+		for (String output : columns) {
+			if (output.contains(".")){
+				String[] splitted = output.split("\\.");
+				output=splitted[splitted.length-1];
+			}
+				
+			if (output.contains("`"))
+				output = output.replaceAll("`", "");
+			if (output.contains("\""))
+				output = output.replaceAll("\"", "");
+			
+			try {
+				double diff = rel.getAttrIndex().get(output).getHistogram().distinctValues();
+				if (diff > maxDiff) {
+					maxDiff = diff;
+
+				}
+				if (rel.getNumberOfTuples() / diff < minfreq) {
+					minfreq = rel.getNumberOfTuples() / diff;
+					minFreqCol = output;
+				}
+
+			} catch (NullPointerException e) {
+				System.out.println("ERROR....");
+				return 1.0;
+			}
+		}
+
+		// double no=rel.getNumberOfTuples();
+		// double result=1.0;
+		if(columns.size()>1){
+		for (String output : columns) {
+			if (output.contains(".")){
+				String[] splitted = output.split("\\.");
+				output=splitted[splitted.length-1];
+			}
+				
+			if (output.contains("`"))
+				output = output.replaceAll("`", "");
+			if (output.equals(minFreqCol)) {
+				continue;
+			}
+			try {
+				minfreq = minfreq / rel.getAttrIndex().get(output).getHistogram().distinctValues();
+			} catch (NullPointerException e) {
+				System.out.println(e.getMessage());
+			}
+			if (minfreq < 1.0) {
+				return 1.0;
+			}
+
+		}
+		return minfreq;
+		}
+		else{
+			return rel.getNumberOfTuples() / maxDiff;
+		}
+		
+	}
+		
+	
 }

@@ -198,10 +198,18 @@ public class Stat implements StatExtractor {
 
     private int computeValOccurences(String tableName, String columnName, String value)
         throws Exception {
+    	//if(value!=null&&(value.contains("Ancistrus")||value.contains("brackish")||value.contains("Bleaching")||value.contains("incubators")||value.contains("Bleeker"))){
+    	//	return 1;
+    	//}
+    	if(value!=null){
+    		value=value.replaceAll("\"", "");
+    		value="\"" + value + "\"";
+    	}
         String queryDf =
             "select count(*) as valCount " + "from `" + tableName + "` where `" + columnName
-                + "` is not null and  `" + columnName + "` = \"" + value + "\"";
+                + "` is not null and  `" + columnName + "` = " + value ;
         Statement stmt = con.createStatement();
+        System.out.println(queryDf);
         ResultSet rs = stmt.executeQuery(queryDf);
         int diffValCount = 0;
         while (rs.next()) {

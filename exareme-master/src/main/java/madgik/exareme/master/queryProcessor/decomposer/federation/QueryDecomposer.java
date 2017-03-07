@@ -14,6 +14,7 @@ import madgik.exareme.master.queryProcessor.decomposer.query.*;
 import madgik.exareme.master.queryProcessor.decomposer.util.Pair;
 import madgik.exareme.master.queryProcessor.decomposer.util.Util;
 import madgik.exareme.master.queryProcessor.estimator.NodeCostEstimator;
+import madgik.exareme.master.queryProcessor.estimator.NodeInfo;
 import madgik.exareme.master.queryProcessor.estimator.NodeSelectivityEstimator;
 import madgik.exareme.master.registry.Registry;
 import madgik.exareme.utils.properties.AdpDBProperties;
@@ -62,10 +63,12 @@ public class QueryDecomposer {
 	private final boolean useCache = AdpDBProperties.getAdpDBProps().getBoolean("db.cache");
 	private final boolean useGreedy = true;
 	private final int mostProminent = DecomposerUtils.MOST_PROMINENT;
-	private boolean onlyLeft = false;
+	private boolean onlyLeft = true;
 	private int unionnumber;
 	SipToUnions sipToUnions;
 	private Set<CartesianSip> cartesianSips;
+	private double onlyLeftTime = 0.0;
+	private double startexpand;
 
 	public QueryDecomposer(SQLQuery initial) throws ClassNotFoundException {
 		this(initial, ".", 1, null);
@@ -284,12 +287,14 @@ public class QueryDecomposer {
 		unionnumber = 0;
 		sipToUnions = new SipToUnions();
 		sipToUnions.put(root.getChildAt(0).getObject().toString(), new HashSet<SipNode>());
-		if(root.hasOneSubquery()){
-		//if (root.getChildAt(0).getChildren().size() < 2) {
+		if (root.hasOneSubquery()) {
+			// if (root.getChildAt(0).getChildren().size() < 2) {
 			this.useSIP = false;
 		}
+		System.out.println("start");
+		this.startexpand = System.currentTimeMillis();
 		expandDAG(root);
-
+		System.out.println("end");
 		// System.out.println("expandtime:"+(System.currentTimeMillis()-b));
 		// System.out.println("noOfnode:"+root.count(0));
 		if (this.useSIP) {
@@ -556,6 +561,7 @@ public class QueryDecomposer {
 					nested.renameTables(firstAliases);
 					ConjunctiveQueryDecomposer d = new ConjunctiveQueryDecomposer(nested, centralizedExecution,
 							addNotNulls);
+					d.setViewInfos(viewinfos);
 					Node topSubquery = d.addCQToDAG(nestedNodeOr, hashes);
 					// String u=union.dotPrint();
 					if (addAliases) {
@@ -589,6 +595,7 @@ public class QueryDecomposer {
 					s.renameTables(firstAliases);
 				}
 				ConjunctiveQueryDecomposer d = new ConjunctiveQueryDecomposer(s, centralizedExecution, addNotNulls);
+				d.setViewInfos(viewinfos);
 				Node topSubquery = d.addCQToDAG(union, hashes);
 				// String u=union.dotPrint();
 				if (addAliases) {
@@ -614,6 +621,12 @@ public class QueryDecomposer {
 	// }
 
 	private void expandDAG(Node eq) {
+		
+		if (!onlyLeft && System.currentTimeMillis() - startexpand > onlyLeftTime) {
+			onlyLeft = true;
+			return;
+			
+		}
 
 		for (int i = 0; i < eq.getChildren().size(); i++) {
 			// System.out.println(eq.getChildren().size());
@@ -673,8 +686,9 @@ public class QueryDecomposer {
 						boolean useCommutativity = true;
 						if (onlyLeft) {
 							for (Node cc : commutativity.getChildren()) {
-								Table t = (Table) cc.getObject();
-								if (t.getName().startsWith("table")) {
+								// Table t = (Table) cc.getObject();
+								// if (t.getName().startsWith("table")) {
+								if (cc.getDescendantBaseTables().size() > 1) {
 									useCommutativity = false;
 									break;
 								}
@@ -738,11 +752,11 @@ public class QueryDecomposer {
 												addImplicit = bwc.getRightOp().equals(bwc2.getRightOp());
 											}
 										}
-										//addImplicit=false;
+										// addImplicit=false;
 										Node associativity = new Node(Node.AND, Node.JOIN);
 										NonUnaryWhereCondition newBwc = new NonUnaryWhereCondition();
 										newBwc.setOperator("=");
-										
+
 										newBwc.setRightOp(bwc.getRightOp());
 										newBwc.setLeftOp(bwc.getLeftOp());
 										associativity.setObject(newBwc);
@@ -756,13 +770,13 @@ public class QueryDecomposer {
 										}
 										Node associativityImplicit = new Node(Node.AND, Node.JOIN);
 										NonUnaryWhereCondition newBwcImplicit = new NonUnaryWhereCondition();
-										if(addImplicit){
-											//System.out.println(bwc+"----");
-											//System.out.println(bwc2);
+										if (addImplicit) {
+											// System.out.println(bwc+"----");
+											// System.out.println(bwc2);
 											newBwcImplicit.setOperator("=");
-											
+
 											newBwcImplicit.setLeftOp(bwc.getLeftOp());
-											
+
 											associativityImplicit.setObject(newBwcImplicit);
 											associativityImplicit.addChild(op.getChildAt(0));
 
@@ -772,7 +786,7 @@ public class QueryDecomposer {
 											} else {
 												associativityImplicit.addChild(c3.getChildAt(0));
 												newBwcImplicit.setRightOp(bwc2.getLeftOp());
-												
+
 											}
 										}
 
@@ -781,7 +795,7 @@ public class QueryDecomposer {
 											Node dummy = new Node(Node.OR);
 											// dummy node corresponding to
 											// cartesian product
-											 
+
 											String n1 = op.getChildAt(0).getObject().toString();
 											dummy.addAllDescendantBaseTables(
 													op.getChildAt(0).getDescendantBaseTables());
@@ -789,7 +803,8 @@ public class QueryDecomposer {
 												String n2 = c3.getChildAt(1).getObject().toString();
 												dummy.addAllDescendantBaseTables(
 														c3.getChildAt(1).getDescendantBaseTables());
-												if (op.getChildAt(0).getHashId().toString().compareTo(c3.getChildAt(1).getHashId().toString()) > 0) {
+												if (op.getChildAt(0).getHashId().toString()
+														.compareTo(c3.getChildAt(1).getHashId().toString()) > 0) {
 													dummy.setObject(n1 + n2);
 												} else {
 													dummy.setObject(n2 + n1);
@@ -797,13 +812,14 @@ public class QueryDecomposer {
 												cartesianSips.add(new CartesianSip((Column) bwc2.getRightOp(), dummy,
 														c3.getChildAt(0)));
 
-											} 
-											
-											if(!comesFromLeftOp){
+											}
+
+											if (!comesFromLeftOp) {
 												String n2 = c3.getChildAt(0).getObject().toString();
 												dummy.addAllDescendantBaseTables(
 														c3.getChildAt(0).getDescendantBaseTables());
-												if ((op.getChildAt(0).getHashId().toString().compareTo(c3.getChildAt(0).getHashId().toString())) > 0) {
+												if ((op.getChildAt(0).getHashId().toString()
+														.compareTo(c3.getChildAt(0).getHashId().toString())) > 0) {
 													dummy.setObject(n1 + n2);
 												} else {
 													dummy.setObject(n2 + n1);
@@ -815,7 +831,8 @@ public class QueryDecomposer {
 
 										Node table = new Node(Node.OR);
 										table.setObject(new Table("table" + Util.createUniqueId(), null));
-										if (hashes.containsKey(associativity.getHashId())) {
+										if (hashes.containsKey(associativity.getHashId())
+												&& !hashes.get(associativity.getHashId()).getParents().isEmpty()) {
 											Node assocInHashes = hashes.get(associativity.getHashId());
 											table = assocInHashes.getFirstParent();
 
@@ -856,8 +873,8 @@ public class QueryDecomposer {
 											table.addAllDescendantBaseTables(associativity.getDescendantBaseTables());
 										}
 										Node tableImplicit = new Node(Node.OR);
-										if(addImplicit){
-											
+										if (addImplicit) {
+
 											tableImplicit.setObject(new Table("table" + Util.createUniqueId(), null));
 											if (hashes.containsKey(associativityImplicit.getHashId())) {
 												Node assocInHashes = hashes.get(associativityImplicit.getHashId());
@@ -870,7 +887,8 @@ public class QueryDecomposer {
 													}
 												}
 												associativityImplicit.removeAllChildren();
-												// associativity = assocInHashes;
+												// associativity =
+												// assocInHashes;
 
 											} else {
 												hashes.put(associativityImplicit.getHashId(), associativityImplicit);
@@ -897,7 +915,8 @@ public class QueryDecomposer {
 															c3.getChildAt(0).getDescendantBaseTables());
 
 												}
-												tableImplicit.addAllDescendantBaseTables(associativityImplicit.getDescendantBaseTables());
+												tableImplicit.addAllDescendantBaseTables(
+														associativityImplicit.getDescendantBaseTables());
 											}
 										}
 
@@ -1023,125 +1042,131 @@ public class QueryDecomposer {
 											 * eq); }
 											 */
 										}
-										
+
 										Node associativityTopImplicit = new Node(Node.AND, Node.JOIN);
 										NonUnaryWhereCondition newBwc2Implicit = new NonUnaryWhereCondition();
-										if(addImplicit){
-										newBwc2Implicit.setOperator("=");
-										if (comesFromLeftOp) {
-											newBwc2Implicit.setRightOp(bwc2.getLeftOp());
-											newBwc2Implicit.setLeftOp(bwc2.getRightOp());
-										} else {
-											newBwc2Implicit.setRightOp(bwc2.getRightOp());
-											newBwc2Implicit.setLeftOp(bwc2.getLeftOp());
-										}
-										// newBwc2.setLeftOp(bwc.getRightOp());
-										associativityTopImplicit.setObject(newBwc2Implicit);
-										associativityTopImplicit.addChild(tableImplicit);
-
-										if (comesFromLeftOp && c3.getChildren().size() > 1) {
-											associativityTopImplicit.addChild(c3.getChildAt(0));
-
-										} else if (c3.getChildren().size() > 1) {
-											associativityTopImplicit.addChild(c3.getChildAt(1));
-
-										}
-										// System.out.println(associativityTop.getObject().toString());
-										if (!hashes.containsKey(associativityTopImplicit.getHashId())
-												|| hashes.get(associativityTopImplicit.getHashId()).getParents().isEmpty()) {
-											hashes.put(associativityTopImplicit.getHashId(), associativityTopImplicit);
-											// Node newTop =
-											// hashes.checkAndPutWithChildren(associativityTop);
-											hashes.remove(eq.getHashId());
-											for (Node p : eq.getParents()) {
-												hashes.remove(p.getHashId());
+										if (addImplicit) {
+											newBwc2Implicit.setOperator("=");
+											if (comesFromLeftOp) {
+												newBwc2Implicit.setRightOp(bwc2.getLeftOp());
+												newBwc2Implicit.setLeftOp(bwc2.getRightOp());
+											} else {
+												newBwc2Implicit.setRightOp(bwc2.getRightOp());
+												newBwc2Implicit.setLeftOp(bwc2.getLeftOp());
 											}
-											eq.addChild(associativityTopImplicit);
-											associativityTopImplicit.addAllDescendantBaseTables(op.getDescendantBaseTables());
-											if (useGreedy) {
-												for (Integer u : eq.getUnions()) {
-													associativityTopImplicit.getUnions().add(u);
+											// newBwc2.setLeftOp(bwc.getRightOp());
+											associativityTopImplicit.setObject(newBwc2Implicit);
+											associativityTopImplicit.addChild(tableImplicit);
+
+											if (comesFromLeftOp && c3.getChildren().size() > 1) {
+												associativityTopImplicit.addChild(c3.getChildAt(0));
+
+											} else if (c3.getChildren().size() > 1) {
+												associativityTopImplicit.addChild(c3.getChildAt(1));
+
+											}
+											// System.out.println(associativityTop.getObject().toString());
+											if (!hashes.containsKey(associativityTopImplicit.getHashId()) || hashes
+													.get(associativityTopImplicit.getHashId()).getParents().isEmpty()) {
+												hashes.put(associativityTopImplicit.getHashId(),
+														associativityTopImplicit);
+												// Node newTop =
+												// hashes.checkAndPutWithChildren(associativityTop);
+												hashes.remove(eq.getHashId());
+												for (Node p : eq.getParents()) {
+													hashes.remove(p.getHashId());
 												}
-											}
-											// noOfChildren++;
-											// eq.setPartitionedOn(new
-											// PartitionCols(newBwc.getAllColumnRefs()));
-											// if(!h.containsKey(eq.computeHashID())){
-											hashes.put(eq.getHashId(), eq);
-											for (Node p : eq.getParents()) {
-												hashes.put(p.computeHashID(), p);
-											}
-											// }
-											/*
-											 * if
-											 * (!h.containsKey(associativityTop
-											 * .computeHashID())){
-											 * h.putWithChildren
-											 * (associativityTop);
-											 * h.remove(eq.computeHashID());
-											 * eq.addChild(associativityTop);
-											 * if(
-											 * !h.containsKey(eq.computeHashID
-											 * ())){ h.put(eq.computeHashID(),
-											 * eq); } else{ //needs unification?
-											 * } } else{ //unify
-											 * //unify(associativityTop, eq, h);
-											 * Node
-											 * other=h.get(associativityTop.
-											 * computeHashID());
-											 * h.remove(eq.computeHashID());
-											 * eq.addChild(other);
-											 * if(!h.containsKey
-											 * (eq.computeHashID())){
-											 * h.put(eq.computeHashID(), eq); }
-											 * else{ //needs unification? } }
-											 */
-										} else {
-
-											unify(eq, hashes.get(associativityTopImplicit.getHashId()).getFirstParent());
-											// same as unify(eq', eq)???
-											// checking again children of eq?
-											associativityTopImplicit.removeAllChildren();
-											if (tableImplicit.getParents().isEmpty()) {
-												if (hashes.get(tableImplicit.getHashId()) == tableImplicit) {
-													hashes.remove(tableImplicit.getHashId());
-												}
-												for (Node n : tableImplicit.getChildren()) {
-													if (n.getParents().size() == 1) {
-														if (hashes.get(n.getHashId()) == n) {
-															hashes.remove(n.getHashId());
-														}
+												eq.addChild(associativityTopImplicit);
+												associativityTopImplicit
+														.addAllDescendantBaseTables(op.getDescendantBaseTables());
+												if (useGreedy) {
+													for (Integer u : eq.getUnions()) {
+														associativityTopImplicit.getUnions().add(u);
 													}
 												}
-												tableImplicit.removeAllChildren();
-											}
-											if (associativityImplicit.getParents().isEmpty()) {
-												if (hashes.get(associativityImplicit.getHashId()) == associativityImplicit) {
-													hashes.remove(associativityImplicit.getHashId());
+												// noOfChildren++;
+												// eq.setPartitionedOn(new
+												// PartitionCols(newBwc.getAllColumnRefs()));
+												// if(!h.containsKey(eq.computeHashID())){
+												hashes.put(eq.getHashId(), eq);
+												for (Node p : eq.getParents()) {
+													hashes.put(p.computeHashID(), p);
 												}
-												associativityImplicit.removeAllChildren();
-											}
+												// }
+												/*
+												 * if (!h.containsKey(
+												 * associativityTop
+												 * .computeHashID())){
+												 * h.putWithChildren
+												 * (associativityTop);
+												 * h.remove(eq.computeHashID());
+												 * eq.addChild(associativityTop)
+												 * ; if( !h.containsKey(eq.
+												 * computeHashID ())){
+												 * h.put(eq.computeHashID(),
+												 * eq); } else{ //needs
+												 * unification? } } else{
+												 * //unify
+												 * //unify(associativityTop, eq,
+												 * h); Node
+												 * other=h.get(associativityTop.
+												 * computeHashID());
+												 * h.remove(eq.computeHashID());
+												 * eq.addChild(other);
+												 * if(!h.containsKey
+												 * (eq.computeHashID())){
+												 * h.put(eq.computeHashID(),
+												 * eq); } else{ //needs
+												 * unification? } }
+												 */
+											} else {
 
-											// do we need this?
-											/*
-											 * Node otherAssocTop =
-											 * hashes.get(associativityTop
-											 * .getHashId()); if
-											 * (!eq.getChildren
-											 * ().contains(otherAssocTop)) {
-											 * hashes.remove(eq.getHashId());
-											 * eq.addChild(otherAssocTop);
-											 * noOfChildren++;
-											 * //eq.setPartitionedOn(new
-											 * PartitionCols
-											 * (newBwc.getAllColumnRefs())); //
-											 * if
-											 * (!h.containsKey(eq.computeHashID
-											 * ())){
-											 * hashes.put(eq.computeHashID(),
-											 * eq); }
-											 */
-										}
+												unify(eq, hashes.get(associativityTopImplicit.getHashId())
+														.getFirstParent());
+												// same as unify(eq', eq)???
+												// checking again children of
+												// eq?
+												associativityTopImplicit.removeAllChildren();
+												if (tableImplicit.getParents().isEmpty()) {
+													if (hashes.get(tableImplicit.getHashId()) == tableImplicit) {
+														hashes.remove(tableImplicit.getHashId());
+													}
+													for (Node n : tableImplicit.getChildren()) {
+														if (n.getParents().size() == 1) {
+															if (hashes.get(n.getHashId()) == n) {
+																hashes.remove(n.getHashId());
+															}
+														}
+													}
+													tableImplicit.removeAllChildren();
+												}
+												if (associativityImplicit.getParents().isEmpty()) {
+													if (hashes.get(associativityImplicit
+															.getHashId()) == associativityImplicit) {
+														hashes.remove(associativityImplicit.getHashId());
+													}
+													associativityImplicit.removeAllChildren();
+												}
+
+												// do we need this?
+												/*
+												 * Node otherAssocTop =
+												 * hashes.get(associativityTop
+												 * .getHashId()); if
+												 * (!eq.getChildren
+												 * ().contains(otherAssocTop)) {
+												 * hashes.remove(eq.getHashId())
+												 * ; eq.addChild(otherAssocTop);
+												 * noOfChildren++;
+												 * //eq.setPartitionedOn(new
+												 * PartitionCols
+												 * (newBwc.getAllColumnRefs()));
+												 * // if (!h.containsKey(eq.
+												 * computeHashID ())){
+												 * hashes.put(eq.computeHashID()
+												 * , eq); }
+												 */
+											}
 										}
 									}
 								}
@@ -1333,9 +1358,24 @@ public class QueryDecomposer {
 								// newsip.add(join.getChildAt(0));
 								// newsip.add(join.getChildAt(1));
 								// sipToUnions.get(unionnumber).add(newsip);
+							} else if (join2.getOpCode() == Node.JOIN) {
+								NonUnaryWhereCondition nuwc2 = (NonUnaryWhereCondition) join2.getObject();
+								Node joinTable3 = join2.getChildAt(0);
+								for (int chNo3 = 0; chNo3 < joinTable3.getChildren().size(); chNo3++) {
+									Node join3 = joinTable3.getChildAt(chNo3);
+									if (join3.getChildren().size() == 2) {
+										sipInfo.addToSipInfo(p, join3, sipToUnions.get(uniontable), nuwc, nuwc2);
+										// Set<Node> newsip=new HashSet<Node>();
+										// newsip.add(join.getChildAt(0));
+										// newsip.add(join.getChildAt(1));
+										// sipToUnions.get(unionnumber).add(newsip);
+									}
+								}
 							}
 						}
-					} else if (join.getOpCode() == Node.SELECT || join.getOpCode() == Node.BASEPROJECT) {
+					}
+
+					else if (join.getOpCode() == Node.SELECT || join.getOpCode() == Node.BASEPROJECT) {
 						// we don't have joins, consider common table to be null
 						sipInfo.addToSipInfo(p, sipToUnions.get(uniontable), join.getChildAt(0));
 					}
@@ -1530,7 +1570,7 @@ public class QueryDecomposer {
 
 	int total = 0;
 	int pruned = 0;
-	private Map<String, Set<ViewInfo>> viewinfos;
+	private Map<Set<String>, Set<ViewInfo>> viewinfos;
 
 	private SinglePlan getBestPlan(Node e, Column c, double limit, double repCost,
 			EquivalentColumnClasses partitionRecord, Set<MemoKey> toMaterialize, Memo memo) {
@@ -2600,8 +2640,21 @@ public class QueryDecomposer {
 		return root.dotPrint().toString();
 	}
 
-	public void setViewInfos(Map<String, Set<ViewInfo>> viewinfos) {
-		this.viewinfos = viewinfos;
+	public void setViewInfos(Map<Set<String>, Set<ViewInfo>> viewinfos2) {
+		this.viewinfos = viewinfos2;
 
 	}
+	
+	public NodeInfo getSelectivityForTopNode(){
+		ConjunctiveQueryDecomposer d = new ConjunctiveQueryDecomposer(initialQuery, true,
+				addNotNulls);
+		Node topSubquery=null;
+		try {
+			 topSubquery = d.addCQToDAG(union, hashes);
+		} catch (CloneNotSupportedException e) {
+			return null;
+		}
+		return topSubquery.getNodeInfo();
+	}
+	
 }

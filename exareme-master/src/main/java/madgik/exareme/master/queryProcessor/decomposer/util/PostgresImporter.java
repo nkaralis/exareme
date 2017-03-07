@@ -32,7 +32,7 @@ public class PostgresImporter {
 		boolean analyze=true;
 		boolean analyzeSQLITE=false;
 		boolean vacuum = false;
-		String path="/media/dimitris/T/exaremenpd500new/";
+		String path="/media/dimitris/T/exaremefish/";
 		DB dbinfo=new DB("ex");
 		dbinfo.setSchema("public");
 		dbinfo.setDriver("org.postgresql.Driver");
@@ -43,28 +43,28 @@ public class PostgresImporter {
 		DB dbinfo2=new DB("ex2");
 		dbinfo2.setSchema("lubm100");
 		dbinfo2.setDriver("com.mysql.jdbc.Driver");
-		dbinfo2.setPass("");
+		dbinfo2.setPass("gray769watt724!@#");
 		dbinfo2.setUser("root");
-		dbinfo2.setMadisString("mysql h:127.0.0.1 u:root db:lubm100");
+		dbinfo2.setMadisString("mysql h:127.0.0.1 u:root lubm100");
 		dbinfo2.setURL("jdbc:mysql://127.0.0.1:3306/lubm100");
-		String url = "jdbc:postgresql://localhost/npd_new_scale100";
+		/*String url = "jdbc:postgresql://localhost/npd_new_scale100";
 		Properties props = new Properties();
 		props.setProperty("user","postgres");
 		props.setProperty("password","gray769watt724!@#");
 		props.setProperty("ssl","true");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});
-		/*String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
+		ResultSet rs = md.getTables(null, "public", "%", new String[] {"TABLE"});*/
+		String url = "jdbc:mysql://127.0.0.1:3306/lubm100";
 		Properties props = new Properties();
 		props.setProperty("user","root");
-		props.setProperty("password","");
+		props.setProperty("password","gray769watt724!@#");
 		Connection conn = DriverManager.getConnection(url, props);
 		DatabaseMetaData md = conn.getMetaData();
-		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});*/
+		ResultSet rs = md.getTables(null, "lubm100", "%", new String[] {"TABLE"});
 		while (rs.next()) {
 			String tablename=rs.getString(3);
-			//if(tablename.compareTo("field_reserves")<0){
+			//if(tablename.compareTo("collaborators")!=0){
 			//	continue;
 			//}
 			//if(!tablename.equalsIgnoreCase("wellbore_development_all")&&!tablename.equalsIgnoreCase("wellbore_exploration_all")&&!tablename.equalsIgnoreCase("wellbore_core")){
@@ -72,7 +72,7 @@ public class PostgresImporter {
 			//}
 			SQLQuery s=new SQLQuery();
 			s.setFederated(true);
-			s.setMadisFunctionString("postgres h:localhost u:root");
+			s.setMadisFunctionString("mysql h:localhost u:root");
 			s.setTemporaryTableName(tablename.toLowerCase());
 			s.addInputTable(new Table(tablename, tablename));
 			ResultSet rs2 = md.getColumns(null, null, rs.getString(3), null);
@@ -83,6 +83,8 @@ public class PostgresImporter {
 	            //	if(!columnname.equalsIgnoreCase("dscNpdidDiscovery")){
 	            //		continue;
 	           // 	}
+	            	if(columnname.contains("-"))
+	            		continue;
 	            	attrs.add(columnname);
 	                //Column c=new Column(tablename, columnname);
 	                s.addOutput(tablename, columnname);
@@ -101,6 +103,7 @@ public class PostgresImporter {
 	    			String del="";
 	    	            while (rs3.next()) {
 	    	            	keys++;
+	    	            	
 	    	            	String columnname=rs3.getString(4);
 	    	            	keyDeclaration+=del+columnname;
 	    	            	del=", ";
@@ -117,7 +120,7 @@ public class PostgresImporter {
 	    	            	
 	    	            }
 	           ExecutorService es = Executors.newCachedThreadPool();
-						DataImporter di = new DataImporter(s, path, dbinfo);
+						DataImporter di = new DataImporter(s, path, dbinfo2);
 						di.setAddToRegisrty(true);
 						di.setPrimaryKey(keyDeclaration);
 							if(keys>1){
@@ -130,9 +133,9 @@ public class PostgresImporter {
 	            if(analyze){
 	            	//tablename="pipLine";
 	            	//attrs.clear();
-	            	//attrs.add("pipNpdidPipe");
-	            	//if(!tablename.toLowerCase().equals(tablename)){
-					OptiqueAnalyzer fa = new OptiqueAnalyzer(path, dbinfo);
+	            	///attrs.add("pipNpdidPipe");
+	            	//if(tablename.toLowerCase().compareTo("occurrence_x")>0){
+					OptiqueAnalyzer fa = new OptiqueAnalyzer(path, dbinfo2);
 					fa.setUseDataImporter(false);
 					System.out.println("analyzing: "+tablename);
 					Schema sch = fa.analyzeAttrs(tablename.toLowerCase(), attrs);

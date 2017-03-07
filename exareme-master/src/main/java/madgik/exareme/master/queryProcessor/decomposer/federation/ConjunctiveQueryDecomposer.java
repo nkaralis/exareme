@@ -43,9 +43,10 @@ public class ConjunctiveQueryDecomposer {
 	private boolean centralizedExecution;
 	private static final boolean useGreedy = true;
 	private static int counter = 0;
-	private static boolean removeReduntantSelfJoins = true;
-	private static boolean checkViews = true;
-	Map<String, Set<ViewInfo>> viewinfos = null;
+	private static boolean removeReduntantSelfJoins = false;
+	private static boolean checkViews = false;
+	Map<Set<String>, Set<ViewInfo>> viewinfos = null;
+	private List<UnaryWhereCondition> added;
 	// private boolean mergeSelections;
 	// private static int counter=0;
 	private static final Logger log = Logger.getLogger(ConjunctiveQueryDecomposer.class);
@@ -55,6 +56,7 @@ public class ConjunctiveQueryDecomposer {
 		this.dbs = new ArrayList<String>();
 		this.lj = new HashSet<Join>();
 		this.remainingWhereConditions = new ArrayList<NonUnaryWhereCondition>();
+		added=new ArrayList<UnaryWhereCondition>();
 		this.nestedSubqueries = new ArrayList<SQLQuery>();
 		/*
 		 * for (Table t : initialQuery.getInputTables()) { if (t.isFederated())
@@ -83,6 +85,7 @@ public class ConjunctiveQueryDecomposer {
 											other.clone(), true);
 									if (!this.initialQuery.getUnaryWhereConditions().contains(toAdd)) {
 										this.initialQuery.getUnaryWhereConditions().add(toAdd);
+										added.add(toAdd);
 									}
 								} catch (CloneNotSupportedException ex) {
 									log.error(ex.getMessage());
@@ -90,6 +93,32 @@ public class ConjunctiveQueryDecomposer {
 							}
 						}
 					}
+				}
+			}
+
+			for (NonUnaryWhereCondition nuwc : this.initialQuery.getBinaryWhereConditions()) {
+				try {
+					if (nuwc.getLeftOp() instanceof Constant && nuwc.getRightOp() instanceof Column) {
+						Column c = (Column) nuwc.getRightOp();
+						UnaryWhereCondition toAdd = new UnaryWhereCondition(UnaryWhereCondition.IS_NULL, c.clone(),
+								true);
+						if (!this.initialQuery.getUnaryWhereConditions().contains(toAdd)) {
+							this.initialQuery.getUnaryWhereConditions().add(toAdd);
+							added.add(toAdd);
+						}
+					}
+					if (nuwc.getRightOp() instanceof Constant && nuwc.getLeftOp() instanceof Column) {
+						Column c = (Column) nuwc.getLeftOp();
+						UnaryWhereCondition toAdd = new UnaryWhereCondition(UnaryWhereCondition.IS_NULL, c.clone(),
+								true);
+						if (!this.initialQuery.getUnaryWhereConditions().contains(toAdd)) {
+							this.initialQuery.getUnaryWhereConditions().add(toAdd);
+							added.add(toAdd);
+						}
+					}
+
+				} catch (CloneNotSupportedException ex) {
+					log.error(ex.getMessage());
 				}
 			}
 		}
@@ -389,9 +418,11 @@ public class ConjunctiveQueryDecomposer {
 									if (!uwc.getAllColumnRefs().isEmpty()) {
 										Column c = uwc.getAllColumnRefs().get(0);
 										if (c.getAlias().equals(t.getAlias())) {
+											Column clonedC = new Column(t.getName(), c.getName());
 											UnaryWhereCondition cloned = uwc.clone();
-											cloned.changeColumn(c, new Column(null, c.getName()));
-											if (!c.getName().equals(vi.getOutput()) && !vi.containsCondition(cloned)) {
+											cloned.changeColumn(c, clonedC);
+											if (!vi.getOutput().contains(clonedC.toString())
+													&& !vi.containsCondition(cloned)) {
 												replace = false;
 												break;
 											} else {
@@ -411,7 +442,8 @@ public class ConjunctiveQueryDecomposer {
 									for (Column c : nuwc.getAllColumnRefs()) {
 										if (c.getAlias().equals(t.getAlias())) {
 											containsOne = true;
-											if (!c.getName().equals(vi.getOutput())) {
+											Column clonedC = new Column(t.getName(), c.getName());
+											if (!vi.getOutput().contains(clonedC.toString())) {
 												containsOutput = false;
 											}
 										} else {
@@ -421,12 +453,20 @@ public class ConjunctiveQueryDecomposer {
 									if (containsAll) {
 										NonUnaryWhereCondition cloned = nuwc.clone();
 										for (Column c : nuwc.getAllColumnRefs()) {
-											cloned.changeColumn(c, new Column(null, c.getName()));
+											cloned.changeColumn(c, new Column(t.getName(), c.getName()));
 										}
 										if (!vi.containsCondition(cloned)) {
-											replace = false;
-											break;
+											if (!containsOutput) {
+												// also contains some other col
+												// from
+												// initial table
+												replace = false;
+												break;
+											}
+											// replace = false;
+											// break;
 										} else {
+											System.out.println("YYYYYYY" + nuwc);
 											toDelete.add(nuwc);
 										}
 									} else if (containsOne) {
@@ -476,6 +516,7 @@ public class ConjunctiveQueryDecomposer {
 		for (NonUnaryWhereCondition bwc : initialQuery.getBinaryWhereConditions()) {
 			this.remainingWhereConditions.add(bwc);
 		}
+		this.initialQuery.getUnaryWhereConditions().removeAll(this.added);
 		for (Table t : this.initialQuery.getInputTables()) {
 			Node table = new Node(Node.OR);
 			table.addDescendantBaseTable(t.getAlias());
@@ -1497,8 +1538,8 @@ public class ConjunctiveQueryDecomposer {
 		counter = 0;
 	}
 
-	public void setViewInfos(Map<String, Set<ViewInfo>> viewinfos) {
-		this.viewinfos = viewinfos;
+	public void setViewInfos(Map<Set<String>, Set<ViewInfo>> viewinfos2) {
+		this.viewinfos = viewinfos2;
 
 	}
 }

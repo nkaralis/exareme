@@ -14,6 +14,8 @@ import madgik.exareme.master.connector.local.AdpDBQueryExecutorThread;
 import madgik.exareme.master.connector.rmi.AdpDBNetReaderThread;
 import madgik.exareme.master.engine.AdpDBManager;
 import madgik.exareme.master.engine.AdpDBManagerLocator;
+import madgik.exareme.master.engine.executor.FinalUnionExecutor;
+import madgik.exareme.master.engine.executor.ResultBuffer;
 import madgik.exareme.master.engine.executor.SQLiteLocalExecutor;
 import madgik.exareme.master.gateway.ExaremeGatewayUtils;
 import madgik.exareme.master.queryProcessor.analyzer.fanalyzer.OptiqueAnalyzer;
@@ -32,6 +34,7 @@ import madgik.exareme.master.queryProcessor.decomposer.query.SQLQuery;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQueryParser;
 import madgik.exareme.master.queryProcessor.decomposer.query.Table;
 import madgik.exareme.master.queryProcessor.decomposer.util.InterfaceAdapter;
+import madgik.exareme.master.queryProcessor.decomposer.util.Util;
 import madgik.exareme.master.queryProcessor.estimator.NodeSelectivityEstimator;
 import madgik.exareme.master.queryProcessor.estimator.db.Schema;
 import madgik.exareme.worker.art.registry.ArtRegistryLocator;
@@ -56,6 +59,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -108,7 +112,6 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 		final int workers = ArtRegistryLocator.getArtRegistryProxy().getContainers().length;
 		
 		final boolean local=false;
-		final int threads=8;
 
 		log.debug("--DB " + dbname);
 		log.debug("--Query " + query);
@@ -118,7 +121,10 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 			@Override
 			public void run() {
 				try {
-					if (query.startsWith("addFederatedEndpoint")) {
+					if(query.startsWith("sparql")){
+						executeLocal(null, null);
+					}
+					else if (query.startsWith("addFederatedEndpoint")) {
 
 						log.debug("Adding endpoint to : " + dbname + "endpoint.db ...");
 						DBInfoWriterDB.write(query, dbname);
@@ -450,7 +456,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							path += "/";
 						}
 						NodeSelectivityEstimator nse = null;
-						Map<String, Set<ViewInfo>> viewinfos = new HashMap<String, Set<ViewInfo>>();
+						Map<Set<String>, Set<ViewInfo>> viewinfos = new HashMap<Set<String>, Set<ViewInfo>>();
 						try {
 							nse = new NodeSelectivityEstimator(path + "histograms.json");
 							BufferedReader br;
@@ -459,7 +465,7 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							// convert the json string back to object
 							// Gson gson = new Gson();
 							Gson gson = new GsonBuilder().registerTypeAdapter(Operand.class, new InterfaceAdapter<Operand>()).create();
-							java.lang.reflect.Type viewType = new TypeToken<Map<String, Set<ViewInfo>>>() {
+							java.lang.reflect.Type viewType = new TypeToken<Map<Set<String>, Set<ViewInfo>>>() {
 							}.getType();
 							viewinfos = gson.fromJson(br, viewType);
 						} catch (Exception e) {
@@ -601,101 +607,87 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 				httpExchange.submitResponse(new BasicAsyncResponseProducer(httpResponse));
 			}
 
-			private void executeLocal(List<SQLQuery> subqueries, String path) throws ClassNotFoundException, SQLException, InterruptedException {
-				// TODO Auto-generated method stub
-				Set<String> inputTables=new HashSet<String>();
+private void executeLocal(List<SQLQuery> subqueries, String path) throws ClassNotFoundException, SQLException, InterruptedException {
 				
-				String resultName=subqueries.get(subqueries.size()-1).getTemporaryTableName();
-				Class.forName("org.sqlite.JDBC");
-				 org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
-				// config.setSharedCache(true);
-			//	config.enableLoadExtension(true);
-				// config.setOpenMode(SQLiteOpenMode.READWRITE);
-				// config.setOpenMode(SQLiteOpenMode.CREATE);
-				 //config.setOpenMode(SQLiteOpenMode.NOMUTEX);
-				// config.setOpenMode(SQLiteOpenMode.SHAREDCACHE);
-				// config.setSharedCache(true);
-				 
-				 //config.setCacheSize(2400000);
-				 //config.setPageSize(4096);
-				 //config.setLockingMode(mode);
-				 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
-				    dataSource.setUrl("jdbc:sqlite:file:/media/dimitris/T/tmp/asssasasas?nolock=1&immutable=1");
-				// dataSource.setUrl("jdbc:sqlite::memory:");
-				    dataSource.setConfig(config);
-				    //=dataSource.getConnection();//
-				Connection connection=DriverManager.getConnection("jdbc:sqlite:file:/media/dimitris/T/tmp/asssasasas?nolock=1&immutable=1");
-				
-				//outofmemory
-				
-				Statement stmt=connection.createStatement();
-				//stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
-				//stmt.execute("PRAGMA threads = 8");
-				stmt.execute("PRAGMA auto_vacuum = NONE"); 
-				stmt.execute("PRAGMA journal_mode = OFF");
-				stmt.execute("PRAGMA synchronous = OFF");
-				stmt.execute("PRAGMA ignore_check_constraints = true");
-				/*stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
-				stmt.execute("PRAGMA automatic_index = TRUE");
-				
-				stmt.execute("PRAGMA page_size = 4096");
-				stmt.execute("PRAGMA cache_size = 2400000");*/
-				//stmt.execute("select load_extension('/home/dimitris/virtualtables/unionsiptext')");
-				//stmt.execute("PRAGMA journal_mode = WAL");
-				//stmt.execute("PRAGMA read_uncommited = TRUE");
-				
-				//connection.createStatement().execute("pragma temp_store=MEMORY");
-				//connection.createStatement().execute("PRAGMA temp_store_directory = '/media/dimitris/T/tmp/'");
-				//
-				Set<String> tblnames=new HashSet<String>();
-				for(SQLQuery q: subqueries){
-					for(Table t:q.getInputTables()){
-						if(!t.getName().startsWith("table")){
-							if(t.getName().startsWith("siptable")){
-								t.setName(t.getAlias());
-								if(tblnames.add(t.getName()))
-								stmt.execute("create virtual table "+t.getName()+" using unionsiptext");
-							}
-							else{
-								if(tblnames.add(t.getName()))
-								stmt.execute("ATTACH 'file:"+path+t.getName()+".0.db?nolock=1' AS "+ t.getName());
-							}
-							}
 	
-					}
-				}
 				
-				stmt.close();
-			//	connection.setAutoCommit(false);
-				//s.setFetchSize(10000);
-				//s.execute("PRAGMA cache_size = 600000");
-				
-				
+	subqueries=new ArrayList<SQLQuery>();
+	for(int t=1;t<17;t++){
+				SQLQuery a=new SQLQuery();
+				a.setStringSQL();
+				a.setSQL("select * from "
+									+" R"+t+" st cross join w where st.o=w.s;\n");
+				subqueries.add(a);
 				 
-			     
-				ExecutorService es = Executors.newFixedThreadPool(8);
-
+	}
+			     long start=System.currentTimeMillis();
+				ExecutorService es = Executors.newFixedThreadPool(16);
+				Map<String, SQLQuery> tableNames=new HashMap<String, SQLQuery>();
+				for(int i=0;i<subqueries.size()-1;i++){
+					SQLQuery next=subqueries.get(i);
+					tableNames.put(next.getTemporaryTableName(), next);
+					
+				}
+				//Connection ccc=getConnection("");
+				List<SQLiteLocalExecutor> executors=new ArrayList<SQLiteLocalExecutor>();
+				ResultBuffer globalBuffer=new ResultBuffer();
+				Set<SQLQuery> finishedQueries=new HashSet<SQLQuery>();
 				for (int i = 0; i < subqueries.size()-1; i++) {
 					SQLQuery q = subqueries.get(i);
+					Set<SQLQuery> dependencies=new HashSet<SQLQuery>();
+					for(Table t:q.getInputTables()){
+						if(tableNames.containsKey(t.getName())){
+							dependencies.add(tableNames.get(t.getName()));
+						}
+					}
 					
-					SQLiteLocalExecutor di = new SQLiteLocalExecutor(q, connection, true);
-						es.execute(di);
+					SQLiteLocalExecutor ex=new SQLiteLocalExecutor(q, getConnection(""), true, dependencies, finishedQueries);
+					ex.setGlobalBuffer(globalBuffer);
+					executors.add(ex);
+						
+				}
+				
+				
+				/*SQLQuery u=subqueries.get(subqueries.size()-1);
+				SQLQuery firstUnion=u.getUnionqueries().get(0);
+				Connection c2=getConnection("union");
+				c2.setAutoCommit(false);
+				Statement st2=c2.createStatement();
+				
+				String create="create table "+u.getTemporaryTableName()+" (";
+				String prepare="insert into "+u.getTemporaryTableName()+" values (";
+				String del="";
+				for(String out:firstUnion.getOutputAliases()){
+					create+=del+out;
+					prepare+=del+"?";
+					del=",";					
+					
+				}
+				create+=" )";
+				prepare+=" )";
+				System.out.println(create);
+				st2.execute(create);
+				st2.close();
+				
+				PreparedStatement st=c2.prepareStatement(prepare);*/
+				FinalUnionExecutor ex=new FinalUnionExecutor(globalBuffer, null,16);
+				es.execute(ex);
+				for(SQLiteLocalExecutor exec:executors){
+					es.execute(exec);
 				}
 				es.shutdown();
 				boolean finished = es.awaitTermination(300, TimeUnit.MINUTES);
-				ExecutorService es2 = Executors.newSingleThreadExecutor();
-				if(finished){
-				//	connection.commit();
-					SQLiteLocalExecutor di = new SQLiteLocalExecutor(subqueries.get(subqueries.size()-1), connection, false);
-					es2.execute(di);
-				es2.shutdown();
-				finished = es2.awaitTermination(300, TimeUnit.MINUTES);
-				if(finished){
+				
+			//	if(finished){
+			//		c2.commit();
 			//	connection.commit();
-				connection.close();
-				System.out.println(System.currentTimeMillis());}
-				}
-			}
+				
+				System.out.println(System.currentTimeMillis()-start);//}
+}
+
+			
+				
+			
 		}.start();
 	}
 
@@ -782,6 +774,102 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 			log.error(e);
 		}
 		return null;
+	}
+	
+	private Connection getConnection(String postfix){
+		try{
+		Class.forName("org.sqlite.JDBC");
+		 org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
+		 config.setSharedCache(true);
+	config.enableLoadExtension(true);
+		// config.setOpenMode(SQLiteOpenMode.READONLY);
+		// config.setOpenMode(SQLiteOpenMode.CREATE);
+		 config.setOpenMode(SQLiteOpenMode.NOMUTEX);
+		 config.setOpenMode(SQLiteOpenMode.SHAREDCACHE);
+		 //config.setSharedCache(true);
+		 
+		 config.setCacheSize(2400000);
+		 config.setPageSize(4096);
+		 //config.setLockingMode(mode);
+		 SQLiteConnectionPoolDataSource dataSource = new SQLiteConnectionPoolDataSource();
+		  //dataSource.setUrl("jdbc:sqlite:file:memdb1?mode=memory&nolock=1");
+		dataSource.setUrl("jdbc:sqlite:file:/media/dimitris/T/tmp/pxbpwj"+postfix+"?cache=shared&nolock=1");
+		 //dataSource.setUrl("jdbc:sqlite::memory:");
+		    dataSource.setConfig(config);
+		    //=dataSource.getConnection();//
+		//Connection connection=DriverManager.getConnection("jdbc:sqlite:file:/media/dimitris/T/tmp/asrrsasasas");
+		Connection connection=dataSource.getConnection();
+		//outofmemory
+		
+		
+		Statement stmt=connection.createStatement();
+		stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
+		stmt.execute("PRAGMA threads = 8");
+		stmt.execute("PRAGMA auto_vacuum = NONE"); 
+		stmt.execute("PRAGMA journal_mode = OFF");
+		//stmt.execute("PRAGMA synchronous = OFF");
+		stmt.execute("PRAGMA ignore_check_constraints = true");
+		stmt.execute("PRAGMA read_uncommitted = true");
+		/*stmt.execute("PRAGMA locking_mode = EXCLUSIVE");
+		stmt.execute("PRAGMA automatic_index = TRUE");
+		
+		stmt.execute("PRAGMA page_size = 4096");
+		stmt.execute("PRAGMA cache_size = 2400000");*/
+		stmt.execute("select load_extension('/home/dimitris/virtualtables/wrapper')");
+		//stmt.execute("PRAGMA journal_mode = WAL");
+		stmt.execute("PRAGMA read_uncommited = TRUE");
+		
+		//connection.createStatement().execute("pragma temp_store=MEMORY");
+		//connection.createStatement().execute("PRAGMA temp_store_directory = '/media/dimitris/T/tmp/'");
+		//
+		//Set<String> tblnames=new HashSet<String>();
+		/*for(int i=0;i<subqueries.size()-1;i++){
+			SQLQuery q=subqueries.get(i);
+			for(Table t:q.getInputTables()){
+				if(!t.getName().startsWith("table")){
+					if(t.getName().startsWith("siptable")){
+						t.setName(t.getAlias());
+						if(tblnames.add(t.getName()))
+						stmt.execute("create virtual table "+t.getName()+" using unionsiptext");
+					}
+					else{
+						if(tblnames.add(t.getName()))
+						stmt.execute("ATTACH 'file:"+path+t.getName()+".0.db?nolock=1' AS "+ t.getName());
+					}
+					}
+
+			}
+		}*/
+		stmt.execute("ATTACH 'file:/media/dimitris/T/test/rdf.0.db?immutable=1&cache=private&nolock=1' AS siptable0"); 
+		//stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/strat_litho_wellbore_core.0.db?immutable=1&cache=private&nolock=1' AS wellbssore0");
+		//stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/licence.0.db?cache=shared' AS licence0"); 
+		//stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore.0.db?cache=shared' AS wellbore0"); 
+	//	stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore_core.0.db?immutable=1&cache=private&nolock=1' AS wellbore_core0"); 
+	//	stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore_exploration_all.0.db?immutable=1&cache=private&nolock=1' AS wellbore_exploration_all0"); 
+	//	stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore_npdid_overview.0.db?immutable=1&cache=private&nolock=1' AS wellbore_npdid_overview0"); 
+		//stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/company.0.db?cache=shared' AS aare0");
+		//		stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore_shallow_all.0.db?immutable=1&cache=private&nolock=1' AS aadre0");
+			//			stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/wellbore_development_all.0.db?immutable=1&cache=private&nolock=1' AS aaress0");
+		//						stmt.execute("ATTACH 'file:/media/dimitris/T/exaremenpd500new/field.0.db?immutable=1&cache=private&nolock=1' AS aarvve0");
+		
+	
+								
+								stmt.close();
+							//	stmt.execute("create virtual table if not exists ttt using unionsiptext");
+							//	ResultSet rs=stmt.executeQuery("select * from ttt where x=1000");
+								//while(rs.next()){
+							//		System.out.println("sssssss");
+							//	}
+	//	connection.setAutoCommit(false);
+		//s.setFetchSize(10000);
+		//s.execute("PRAGMA cache_size = 600000");
+		return connection;
+		}
+		catch(java.sql.SQLException | ClassNotFoundException e){
+			System.out.println(e.getMessage());
+			return null;
+		}
+		
 	}
 
 }

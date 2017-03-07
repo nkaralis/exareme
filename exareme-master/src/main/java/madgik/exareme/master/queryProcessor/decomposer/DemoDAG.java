@@ -21,7 +21,10 @@ import com.google.gson.*;
 import madgik.exareme.master.queryProcessor.decomposer.dag.NodeHashValues;
 import madgik.exareme.master.queryProcessor.decomposer.federation.NamesToAliases;
 import madgik.exareme.master.queryProcessor.decomposer.federation.QueryDecomposer;
+import madgik.exareme.master.queryProcessor.decomposer.query.NonUnaryWhereCondition;
 import madgik.exareme.master.queryProcessor.decomposer.query.Operand;
+import madgik.exareme.master.queryProcessor.decomposer.query.Output;
+import madgik.exareme.master.queryProcessor.decomposer.query.QueryUtils;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQuery;
 import madgik.exareme.master.queryProcessor.decomposer.query.SQLQueryParser;
 import madgik.exareme.master.queryProcessor.estimator.NodeSelectivityEstimator;
@@ -123,7 +126,8 @@ public class DemoDAG {
 		String testPlan = "select m1.wellbore_mud_id from " + "wellbore_mud m1, wellbore_mud m2, apaAreaGross g "
 				+ "where " + "m1.wellbore_mud_id=m2.wellbore_mud_id and " + "m2.wellbore_mud_id=g.apaAreaGross_id";
 
-		getDFLsFromDir("/home/dimitris/Dropbox/npdsql/lubm/");
+		//getDFLsFromDir("/home/dimitris/Dropbox/npdsql/alllubmall/");
+		 getDFLsFromDir("/home/dimitris/Dropbox/npdsql/npdnew100/");
 		/*
 		 * NodeHashValues hashes=new NodeHashValues(); NodeSelectivityEstimator
 		 * nse = null; try { nse = new
@@ -156,63 +160,54 @@ public class DemoDAG {
 		NodeHashValues hashes = new NodeHashValues();
 
 		NodeSelectivityEstimator nse = null;
-		Map<String, Set<ViewInfo>> viewinfos = new HashMap<String, Set<ViewInfo>>();
+		Map<Set<String>, Set<ViewInfo>> viewinfos = new HashMap<Set<String>, Set<ViewInfo>>();
 		try {
-			nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremelubm100/" + "histograms.json");
+			//nse = new NodeSelectivityEstimator("/media/dimitris/T/exaremelubm100/" + "histograms.json");
+			 nse = new
+			 NodeSelectivityEstimator("/media/dimitris/T/exaremenpd500new/" +
+			 "histograms.json");
+			// nse = new NodeSelectivityEstimator("/home/dimitris/" +
+			// "histograms-replaced.json");
 			BufferedReader br;
-			br = new BufferedReader(new FileReader("/media/dimitris/T/exaremelubm100/" + "views.json"));
-
+			br = new BufferedReader(new FileReader("/tmp/" + "views.json"));
+			// br = new BufferedReader(new
+			// FileReader("/media/dimitris/T/exaremelubm100/" + "views.json"));
+			// br = new BufferedReader(new
+			// FileReader("/media/dimitris/T/exaremenpd100new/" +
+			// "views.json"));
 			// convert the json string back to object
 			// Gson gson = new Gson();
 			Gson gson = new GsonBuilder().registerTypeAdapter(Operand.class, new InterfaceAdapter<Operand>()).create();
 			java.lang.reflect.Type viewType = new TypeToken<Map<String, Set<ViewInfo>>>() {
 			}.getType();
 			viewinfos = gson.fromJson(br, viewType);
-			/*System.out.println(viewinfos);
-			for(Set<ViewInfo> vi:viewinfos.values()){
-				Set<ViewInfo> toAdd=new HashSet<ViewInfo>();
-				ViewInfo[] viewArray = vi.toArray(new ViewInfo[vi.size()]);
-				int initialSize=vi.size();
-				for(int i=0;i<initialSize;i++){
-					ViewInfo info=viewArray[i];
-					if(info==null){
-						continue;
-					}
-					ViewInfo combined=new ViewInfo(info.getTableName()+"all", info.getOutput());
-					boolean add=false;
-					if(info.getNumberOfConditions()!=1){
-						continue;
-					}
-					combined.addConditions(info);
-					
-					for(int j=i+1;j<initialSize;j++){
-						ViewInfo info2=viewArray[j];
-						if(info2==null){
-							continue;
-						}
-						if(info2.getOutput().equals(info.getOutput()) && info2.getNumberOfConditions()==1){
-							combined.addConditions(info2);
-							add=true;
-							
-							viewArray[j]=null;
-						}
-					}
-					if(add){
-						toAdd.add(combined);
-					}
-					viewArray[i]=null;
-				}
-				for(ViewInfo vi2:toAdd){
-					vi2.setOr(true);
-					vi.add(vi2);
-				}
-			}
-			String jsonStr = gson.toJson(viewinfos, viewType);
-
-	        PrintWriter writer = new PrintWriter("/media/dimitris/T/exaremelubm100/" + "views.json.bak", "UTF-8");
-	        writer.println(jsonStr);
-	        writer.close();
-*/
+			/*
+			 * System.out.println(viewinfos); for(Set<ViewInfo>
+			 * vi:viewinfos.values()){ Set<ViewInfo> toAdd=new
+			 * HashSet<ViewInfo>(); ViewInfo[] viewArray = vi.toArray(new
+			 * ViewInfo[vi.size()]); int initialSize=vi.size(); for(int
+			 * i=0;i<initialSize;i++){ ViewInfo info=viewArray[i];
+			 * if(info==null){ continue; } ViewInfo combined=new
+			 * ViewInfo(info.getTableName()+"all", info.getOutput()); boolean
+			 * add=false; if(info.getNumberOfConditions()!=1){ continue; }
+			 * combined.addConditions(info);
+			 * 
+			 * for(int j=i+1;j<initialSize;j++){ ViewInfo info2=viewArray[j];
+			 * if(info2==null){ continue; }
+			 * if(info2.getOutput().equals(info.getOutput()) &&
+			 * info2.getNumberOfConditions()==1){ combined.addConditions(info2);
+			 * add=true;
+			 * 
+			 * viewArray[j]=null; } } if(add){ toAdd.add(combined); }
+			 * viewArray[i]=null; } for(ViewInfo vi2:toAdd){ vi2.setOr(true);
+			 * vi.add(vi2); } } String jsonStr = gson.toJson(viewinfos,
+			 * viewType);
+			 * 
+			 * PrintWriter writer = new
+			 * PrintWriter("/media/dimitris/T/exaremelubm100/" +
+			 * "views.json.bak", "UTF-8"); writer.println(jsonStr);
+			 * writer.close();
+			 */
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
@@ -223,11 +218,47 @@ public class DemoDAG {
 
 		d.setN2a(new NamesToAliases());
 		StringBuffer sb = new StringBuffer();
-		for (SQLQuery s : d.getSubqueries()) {
-			sb.append("\n");
-			sb.append(s.toDistSQL());
+		List<SQLQuery> result = d.getSubqueries();
+		boolean mysql = true;
+		SQLQuery last = result.get(result.size() - 1);
+		if (last.getUnionqueries().isEmpty()) {
+			if (mysql) {
+				for (Output out : last.getOutputs()) {
+					Operand o = out.getObject();
+					out.setObject(QueryUtils.convertToMySQLDialect(o));
+				}
+				for (NonUnaryWhereCondition bwc : last.getBinaryWhereConditions()) {
+					for (Operand o : bwc.getOperands()) {
+						o = QueryUtils.convertToMySQLDialect(o);
+					}
+				}
+			}
+			writeFile(file + ".dfl", last.toSQL());
+		} else {
+			sb.append("SELECT * FROM ( \n");
+			
+			String del = "";
+			for (SQLQuery s : last.getUnionqueries()) {
+				if (mysql) {
+					for (Output out : s.getOutputs()) {
+						Operand o = out.getObject();
+						out.setObject(QueryUtils.convertToMySQLDialect(o));
+					}
+					for (NonUnaryWhereCondition bwc : s.getBinaryWhereConditions()) {
+						for (Operand o : bwc.getOperands()) {
+							o = QueryUtils.convertToMySQLDialect(o);
+						}
+					}
+				}
+				sb.append("\n");
+				sb.append(del);
+				String sql = s.toSQL();
+				sb.append(sql.substring(0, sql.length() - 1));
+				del = " UNION ALL \n";
+			}
+			sb.append(" \n ) q");
+			writeFile(file + ".dfl", sb.toString());
 		}
-		writeFile(file + ".dfl", sb.toString());
 	}
 
 	private static String readFile(String file) throws IOException {
@@ -249,7 +280,7 @@ public class DemoDAG {
 		File[] listOfFiles = folder.listFiles();
 		List<String> files = new ArrayList<String>();
 		for (int i = 0; i < listOfFiles.length; i++) {
-			if (listOfFiles[i].isFile() && listOfFiles[i].getCanonicalPath().endsWith("q.sql")) {
+			if (listOfFiles[i].isFile() && listOfFiles[i].getCanonicalPath().endsWith("30.q.sql")) {
 				files.add(listOfFiles[i].getCanonicalPath());
 			}
 		}

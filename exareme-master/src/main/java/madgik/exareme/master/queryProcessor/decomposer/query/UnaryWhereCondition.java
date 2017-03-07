@@ -23,7 +23,6 @@ public class UnaryWhereCondition implements Operand {
     public static final int LIKE = 1;
     private Operand onColumn;
     private String o;
-    private HashCode hash=null;
 
     public UnaryWhereCondition(int type, Operand c, boolean n) {
         super();
@@ -47,7 +46,6 @@ public class UnaryWhereCondition implements Operand {
 
     public void setOperand(Operand column) {
         this.onColumn = column;
-        hash=null;
     }
 
     public int getType() {
@@ -100,7 +98,7 @@ public class UnaryWhereCondition implements Operand {
             .equals(other.onColumn))) {
             return false;
         }
-        if(this.o != other.o){
+        if(!this.o.equals(other.o)){
         	return false;
         }
         return true;
@@ -108,7 +106,6 @@ public class UnaryWhereCondition implements Operand {
 
     @Override
     public void changeColumn(Column oldCol, Column newCol) {
-    	hash=null;
     	if(onColumn instanceof Column){
     		Column c=(Column)onColumn;
         if (c.getName().equals(oldCol.getName()) && c.getAlias().equals(oldCol.getAlias())) {
@@ -125,7 +122,6 @@ public class UnaryWhereCondition implements Operand {
         UnaryWhereCondition cloned = (UnaryWhereCondition)super.clone();
     cloned.setOperand(this.getOperand().clone());
     cloned.setObject(this.getObject());
-    cloned.hash=hash;
     return cloned;
     }
 
@@ -140,7 +136,6 @@ public class UnaryWhereCondition implements Operand {
 	
 	@Override
 	public HashCode getHashID() {
-		if(hash==null){
 			List<HashCode> codes = new ArrayList<HashCode>();
 		codes.add(onColumn.getHashID());
 		codes.add(Hashing.sha1().hashInt(this.type));
@@ -151,8 +146,12 @@ public class UnaryWhereCondition implements Operand {
 		else{
 			codes.add(Hashing.sha1().hashBytes("false".getBytes()));
 		}
-		hash=Hashing.combineOrdered(codes);}
-		return hash;
+		return Hashing.combineOrdered(codes);
+		
+	}
+
+	public String getValue() {
+		return o.toString();
 	}
     
 }

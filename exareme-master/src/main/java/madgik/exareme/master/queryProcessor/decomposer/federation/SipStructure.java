@@ -279,4 +279,106 @@ public class SipStructure {
 		
 	}
 
+	public void addToSipInfo(Projection p, Node n, Set<SipNode> set, NonUnaryWhereCondition nuwc,
+			NonUnaryWhereCondition nuwc2) {
+		NonUnaryWhereCondition join = (NonUnaryWhereCondition) n.getObject();
+		Node left = n.getChildAt(0);
+		Node right = n.getChildAt(1);
+		if (!(join.getLeftOp() instanceof Column && join.getRightOp() instanceof Column)) {
+			return;
+		}
+		if (!(nuwc.getLeftOp() instanceof Column && nuwc.getRightOp() instanceof Column)) {
+			return;
+		}
+		if (!(nuwc2.getLeftOp() instanceof Column && nuwc2.getRightOp() instanceof Column)) {
+			return;
+		}
+		Column rightFilterColumn = null;
+		Column leftFilterColumn = null;
+		if (!join.equals(nuwc)) {
+			if (right.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn = nuwc.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn = nuwc.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (right.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn = nuwc.getRightOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn = nuwc.getRightOp().getAllColumnRefs().get(0);
+			}
+		}
+		
+		Column rightFilterColumn2 = null;
+		Column leftFilterColumn2 = null;
+		if (!join.equals(nuwc2)) {
+			if (right.isDescendantOfBaseTable(nuwc2.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn2 = nuwc2.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc2.getLeftOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn2 = nuwc2.getLeftOp().getAllColumnRefs().get(0);
+			}
+			if (right.isDescendantOfBaseTable(nuwc2.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				rightFilterColumn2 = nuwc2.getRightOp().getAllColumnRefs().get(0);
+			}
+			if (left.isDescendantOfBaseTable(nuwc2.getRightOp().getAllColumnRefs().get(0).getAlias())) {
+				leftFilterColumn2 = nuwc2.getRightOp().getAllColumnRefs().get(0);
+			}
+		}
+		// if(leftFilterColumn==null || rightFilterColumn==null){
+		// return;
+		// }
+		SipInfo si = new SipInfo(p, join.getLeftOp().getAllColumnRefs().get(0), left);
+		if (leftFilterColumn != null && rightFilterColumn != null) {
+			si.addJoinCol(rightFilterColumn);
+		}
+		if (leftFilterColumn2 != null && rightFilterColumn2 != null) {
+			si.addJoinCol(rightFilterColumn2);
+		}
+		boolean exists = false;
+		SipInfoValue siv = new SipInfoValue(right, si.AnonymizeColumns());
+		for (SipInfo siKey : sipInfos.keySet()) {
+			if (siKey.equals(si)) {
+				Set<SipInfoValue> nodes = sipInfos.get(siKey);
+				nodes.add(siv);
+				set.add(new SipNode(right, siKey));
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			Set<SipInfoValue> s = new HashSet<SipInfoValue>();
+			s.add(siv);
+			sipInfos.put(si, s);
+			set.add(new SipNode(right, si));
+		}
+		exists = false;
+		si = new SipInfo(p, join.getRightOp().getAllColumnRefs().get(0), right);
+		if (leftFilterColumn != null && rightFilterColumn != null) {
+			si.addJoinCol(leftFilterColumn);
+		}
+		if (leftFilterColumn2 != null && rightFilterColumn2 != null) {
+			si.addJoinCol(leftFilterColumn2);
+		}
+		siv = new SipInfoValue(left, si.AnonymizeColumns());
+		for (SipInfo siKey : sipInfos.keySet()) {
+			if (siKey.equals(si)) {
+				Set<SipInfoValue> nodes = sipInfos.get(siKey);
+				nodes.add(siv);
+				set.add(new SipNode(left, siKey));
+				exists = true;
+				break;
+			}
+		}
+		if (!exists) {
+			Set<SipInfoValue> s = new HashSet<SipInfoValue>();
+			s.add(siv);
+			sipInfos.put(si, s);
+			set.add(new SipNode(left, si));
+		}
+
+	}
+
+
 }

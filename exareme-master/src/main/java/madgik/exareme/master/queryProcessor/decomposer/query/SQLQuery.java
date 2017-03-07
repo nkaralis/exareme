@@ -162,6 +162,9 @@ public class SQLQuery {
 	}
 
 	public String toSQL() {
+if(this.isStringSQL){
+	return sql;
+}
 		StringBuilder output = new StringBuilder();
 		String separator = "";
 		if (this.isFederated()) {
@@ -313,7 +316,7 @@ public class SQLQuery {
 					} else {
 						output.append(t.toString().toLowerCase());
 					}
-					separator = " CROSS JOIN ";
+					separator = " , ";
 				}
 			}
 		}
@@ -2197,11 +2200,11 @@ public class SQLQuery {
 						} 
 
 						if (t.getAlias().startsWith("siptable")) {
-							separator = " CROSS JOIN  ";
+							separator = " ,  ";
 						}
 						output.append(separator);
 						output.append(t.toString());
-						separator = " CROSS JOIN ";
+						separator = " , ";
 						// if (t.getAlias().startsWith("siptable")) {
 						// separator = " CROSS JOIN ";
 						// }
@@ -2513,10 +2516,11 @@ public class SQLQuery {
 	public String getWhereSQL() {
 		StringBuffer result = new StringBuffer("");
 		String del = "where \n";
+		String separator = "";
 		if (!this.binaryWhereConditions.isEmpty()) {
 			result.append(del);
 			del = "";
-			String separator = "";
+			
 			for (NonUnaryWhereCondition wc : getBinaryWhereConditions()) {
 				result.append(separator);
 				result.append(wc.toString());
@@ -2525,8 +2529,9 @@ public class SQLQuery {
 		}
 		if (!this.unaryWhereConditions.isEmpty()) {
 			result.append(del);
+			//String separator = "";
 			for (UnaryWhereCondition wc : getUnaryWhereConditions()) {
-				String separator = "";
+				
 				result.append(separator);
 				result.append(wc.toString());
 				separator = " and \n";
@@ -2565,7 +2570,9 @@ public class SQLQuery {
 					}
 					}
 				}
-				tempScore=weight*(this.inputTables.size()-sj.getNumber())*tempScore;
+				if(this.inputTables.size()>1){
+					tempScore=weight*(this.inputTables.size()-sj.getNumber())*tempScore;
+				}
 				if(best<tempScore){
 					best=tempScore;
 					result=sj.getSipName();

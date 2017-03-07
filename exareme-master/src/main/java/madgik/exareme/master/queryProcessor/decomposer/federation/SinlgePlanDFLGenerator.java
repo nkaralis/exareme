@@ -264,9 +264,9 @@ public class SinlgePlanDFLGenerator {
 				if (DecomposerUtils.REMOVE_OUTPUTS) {
 					removeOutputs(qs);
 				}
-				boolean splitLarge=true;
+				boolean splitLarge=false;
 				if(splitLarge){
-					int threads=8;
+					int threads=9;
 					if(qs.size()>threads-1){
 						List<SQLQuery> cloned=new ArrayList((ArrayList<SQLQuery>)qs);
 						Map<String, Integer> multiplicities=new HashMap<String, Integer>();
@@ -278,6 +278,7 @@ public class SinlgePlanDFLGenerator {
 								}
 							}
 						}
+						int counter=0;
 						while(cloned.size()+queriesToSip.size()<threads){
 							int maxMultiplicity=-1;
 							String maxSi=null;
@@ -295,8 +296,9 @@ public class SinlgePlanDFLGenerator {
 								newSi.add(n);
 							}
 							multiplicities.put(maxSi, queriesToSip.get(maxSi).size());
-							queriesToSip.put(maxSi+"a", newSi);
-							multiplicities.put(maxSi+"a", queriesToSip.get(newSi).size());
+							queriesToSip.put(maxSi+counter, newSi);
+							multiplicities.put(maxSi+counter, queriesToSip.get(maxSi+counter).size());
+							counter++;
 						}
 					}
 					 
@@ -339,12 +341,61 @@ public class SinlgePlanDFLGenerator {
 
 						SQLQuery toReplace = new SQLQuery();
 						StringBuffer toRepl = new StringBuffer();
-						toRepl.append("select * from (");
+						boolean removeUri=false;
+						if(!removeUri){
+							toRepl.append("select * from (");
+						}
+						else{
+							List<Output> outs=queriesToSip.get(si).iterator().next().getOutputs();
+							int counter=0;
+							List<Output> cloned=new ArrayList<Output>();
+							for(Output o:outs){
+								try {
+									cloned.add(o.clone());
+								} catch (CloneNotSupportedException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
+							for(Output cl:cloned){
+								List<Column> clCols=cl.getObject().getAllColumnRefs();
+								for(Column c:clCols){
+									String nextColName="c"+counter;
+									counter++;
+									cl.getObject().changeColumn(c, new Column(null, nextColName));
+								}
+							}
+							toRepl.append("select ");
+							String del="";
+							for(Output c:cloned){
+								toRepl.append(del);
+								toRepl.append(c.toString());
+								del=",";
+							}
+							toRepl.append(" from (");
+						}
 						String separator = "";
 
 						for (SQLQuery s : queriesToSip.get(si)) {
 							if (s.sipJoinIsLast()) {
 								toRepl.append(separator);
+								if(removeUri){
+									int counter=0;
+									List<Output> outs=s.getOutputs();
+									List<Output> newOuts=new ArrayList<Output>();
+									
+									for(Output cl:outs){
+										List<Column> clCols=cl.getObject().getAllColumnRefs();
+										for(Column c:clCols){
+											String nextColName="c"+counter;
+											counter++;
+											Output newOut=new Output(nextColName, c);
+											newOuts.add(newOut);
+										}
+									}
+									s.setOutputs(newOuts);
+								}
+								
 								toRepl.append(s.toSipSQL());
 								separator = " UNION ALL ";
 								// now setting union all to avoid not necessary
@@ -357,6 +408,22 @@ public class SinlgePlanDFLGenerator {
 						for (SQLQuery s : queriesToSip.get(si)) {
 							if (!s.sipJoinIsLast()) {
 								toRepl.append(separator);
+								if(removeUri){
+									int counter=0;
+									List<Output> outs=s.getOutputs();
+									List<Output> newOuts=new ArrayList<Output>();
+									
+									for(Output cl:outs){
+										List<Column> clCols=cl.getObject().getAllColumnRefs();
+										for(Column c:clCols){
+											String nextColName="c"+counter;
+											counter++;
+											Output newOut=new Output(nextColName, c);
+											newOuts.add(newOut);
+										}
+									}
+									s.setOutputs(newOuts);
+								}
 								toRepl.append(s.toSipSQL());
 								separator = " UNION ALL ";
 								// now setting union all to avoid not necessary
@@ -450,7 +517,7 @@ public class SinlgePlanDFLGenerator {
 			removeOutputs(qs);
 		}
 
-		boolean mergeUnions = true;
+		boolean mergeUnions = false;
 		if (mergeUnions && qs.size() > 50) {
 			SQLQuery last = qs.get(qs.size() - 1);
 			SQLQuery current = new SQLQuery();
@@ -1785,7 +1852,7 @@ public class SinlgePlanDFLGenerator {
 
 			for (SipInfoValue siv : this.sipStruct.getSipInfo(si)) {
 				if (siv.getNode() == sn.getNode()) {
-					System.out.println("***************************");
+					//System.out.println("***************************");
 					for (Column out : siv.getOutputs()) {
 						BinaryOperand bo = new BinaryOperand();
 						bo.setOperator("||'-'||");
@@ -1855,12 +1922,13 @@ public class SinlgePlanDFLGenerator {
 
 	}
 
-	private Operand addFilterJoin(Column filterJoin, Operand previous,
+	private Operand addFilterJoin(Set<Column> filterJoin, Operand previous,
 			ResultList tempResult, Set<String> tables) {
 		if (filterJoin != null) {
+			for(Column f:filterJoin){
 			Column filterRenamed = new Column(
-					tempResult.getQueryForBaseTable(filterJoin.getAlias()),
-					filterJoin.getName(), filterJoin.getAlias());
+					tempResult.getQueryForBaseTable(f.getAlias()),
+					f.getName(), f.getAlias());
 			Column toAddToSip = null;
 			// for (NonUnaryWhereCondition join :
 			// tempResult.getCurrent().getBinaryWhereConditions()) {
@@ -1889,8 +1957,9 @@ public class SinlgePlanDFLGenerator {
 				bo.setOperator("||'-'||");
 				bo.setLeftOp(previous);
 				bo.setRightOp(toAddToSip);
-				return bo;
+				previous= bo;
 			}
+		}
 		}
 		return previous;
 	}
