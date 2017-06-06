@@ -44,18 +44,27 @@ public class ExaremeJDBCTest {
         log.info("--------- TEST -------------");
         // Load the driver
         Class.forName("madgik.exareme.jdbc.federated.AdpDriver");
+        
 
-        String database = "jdbc:fedadp:http://10.254.11.23:9090/home/adp/database/demo/";
+        String database = "jdbc:fedadp:http://localhost:9090/home/nkaralis/exareme_db/test";
         Connection conn = DriverManager.getConnection(database);
         log.info("Connections created.");
 
-        String tablename = "wellbore";
-        //        String q="select * from "+tablename;
-        String q = "select * from demo  ";
+        //String tablename = "sales";
+        //String q="select * from "+tablename;
+        String q = "select id  from lilou8 l1, lilou8 l2 where l1.id >= l2.id limit 10";
+        String q2 = "select distinct l1.id as liId, l2.id as l2Id from lilou2 l1, lilou2 l2 where st_intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) limit 10";
+        String q3 = "select distinct l1.geometry as g1, l2.geometry as g2 from lilou4 l1, lilou4 l2 where intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) = 1";
+        String q4 = "distributed create table lilou4 to 4 on id as select * from lilou2;";
+        String q5 = "select distinct * from results";
+        String q6 = "distributed drop table lilou5;";
+        String q7 = "distributed create table lilou5 to 2 on geometry as external select geometry from (file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";
+        String q8 = "distributed create table results as select l1.geometry, l2.geometry from lilou4 l1, lilou4 l2 where st_intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) = 1;";
         Statement st = conn.createStatement();
         log.info("Statement created.");
+        //ResultSet rs1 = st.executeQuery("select load_extension('/usr/local/lib/mod_spatialite')");
 
-        ResultSet rs = st.executeQuery(q);
+        ResultSet rs = st.executeQuery(q3);
         log.info("Query executed.");
         printResultset(rs);
         rs.close();

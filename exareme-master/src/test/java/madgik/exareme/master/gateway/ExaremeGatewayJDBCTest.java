@@ -2,6 +2,7 @@ package madgik.exareme.master.gateway;
 
 import madgik.exareme.master.app.cluster.ExaremeCluster;
 import madgik.exareme.master.app.cluster.ExaremeClusterFactory;
+
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.junit.After;
@@ -28,7 +29,7 @@ public class ExaremeGatewayJDBCTest {
         Logger.getRootLogger().setLevel(Level.ALL);
 
         log.info("---- TEST ----");
-        ExaremeCluster miniCluster = ExaremeClusterFactory.createMiniCluster(1099, 8088, 0);
+        ExaremeCluster miniCluster = ExaremeClusterFactory.createMiniCluster(1099, 8088, 3);
         miniCluster.start();
 
         // load driver
@@ -40,9 +41,19 @@ public class ExaremeGatewayJDBCTest {
 
         // query
         String tablename = "emp";
-        String q = "distributed create table test as select * from " + tablename + ";";
+        //String q = "distributed create table test as select * from " + tablename + ";";
+        
+        String database = "jdbc:fedadp:http://localhost:9090/home/nkaralis/exareme_db";
+        conn = DriverManager.getConnection(database);
+        log.info("Connections created.");
+
+         tablename = "lilou8";
+       // String q="select * from "+tablename;
+       String q = "select id  from lilou9 l1, lilou9 l2 where l1.id > l2.id limit 10";
+        String q2 = "select distinct l1.id as liId, l2.id as l2Id from lilou9 l1, lilou9 l2 where l1.id<l2.id limit 10";
         Statement st = conn.createStatement();
         log.info("Statement created.");
+       
 
         ResultSet rs = st.executeQuery(q);
         log.info("Query executed.");
@@ -69,7 +80,7 @@ public class ExaremeGatewayJDBCTest {
         rs.close();
         st.close();
 
-        miniCluster.stop(false);
+        miniCluster.stop(true);
         log.info("Manager stopped");
 
         log.info("---- TEST ----");

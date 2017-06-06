@@ -74,7 +74,7 @@ public class MadisProcessExecutor {
 				script.append(additionalCommands + "\n");
 			}
 			script.append("\n");
-			
+			log.info("MADIS SCRIPT: " + script);
 			String oneTableloc=null;
 
 			HashMap<String, ArrayList<String>> nonLocalTableDatabases = new HashMap<>();
@@ -227,14 +227,16 @@ public class MadisProcessExecutor {
 			// Skip explain query <- valuable when the has net communications
 			// with external sources (e.g. oracle)
 			// script.append("explain query plan " + query + ";\n\n");
-
+			
 			script.append("-- Run Query \n");
 			List<String> queryStms = state.getOperator().getQuery().getQueryStatements();
 			for (int queryNo = 0; queryNo < (queryStms.size() - 1); ++queryNo) {
 				script.append(queryStms.get(queryNo) + ";\n\n");
 			}
 			int outputParts = output.getNumOfPartitions();
+			script.append("-- OUTPUTPARTS = " + outputParts + "\n");
 			if (outputParts < 2) {
+				script.append("-- LOCAL MODE 1 WORKER\n");
 				// Create the query
 				script.append("create table " + outputTable + " as \n");
 				script.append(query + ";\n\n");
@@ -252,11 +254,12 @@ public class MadisProcessExecutor {
 					script.append("output split:" + outputParts + " '" + outputTable + ".db'");
 					// script.append(" select hashmd5mod(");
 					// TODO(herald): change it to the following ...
-					script.append(" select hashmodarchdep(");
+					script.append(" select spatial_part(");
 					for (String column : output.getPatternColumnNames()) {
 						script.append(column + ", ");
 					}
 					script.append(outputParts + "),* from (" + query + ") as q;\n\n");
+//					script.append(" select 0.0, 1.0, 2.0, 3.0, * from (" + query + ") as q;\n\n");
 				}
 			}
 			if (state.getOperator().getQuery().getIndexCommand() != null) {

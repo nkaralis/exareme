@@ -326,8 +326,8 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                             it.send(None)
                             dbcon.append((t[0], t[1]))
                         senders = tuple(senders)
-
                         for row in diter:
+
                             senders[hash(row[0]) % maxparts](row)
 
                         for it in iters:
@@ -339,10 +339,17 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                             dbcon.append((t[0], t[1]))
                             insertqueryw = t[2]
                         cursors = tuple(cursors)
-
+                        #raise functions.OperatorError("output", hash("4.0") % maxparts)
                         for row in diter:
-                            cursors[hash(row[0]) % maxparts](insertqueryw, row[1:])
-
+                            if(len(row[0]) > 3):
+                                parts = row[0].split(",")
+                               #raise functions.OperatorError("output", parts)
+                                for i in range(0, len(parts)):
+                                    cursors[hash(float(parts[i])) % maxparts](insertqueryw, row[1:])
+                            else:
+                                cursors[hash(float(row[0])-1) % maxparts](insertqueryw, row[1:])
+                        
+                        
                     for c, cursor in dbcon:
                         if c != None:
                             if orderby:

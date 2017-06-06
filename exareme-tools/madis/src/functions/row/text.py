@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import division
 import setpath
 import re
 import functions
@@ -6,8 +7,11 @@ import unicodedata
 import hashlib
 import zlib
 import itertools
+from osgeo import ogr
 from collections import deque
 from lib import jopts
+from math import sqrt
+from math import ceil
 
 # Increase regular expression cache
 try:
@@ -1312,3 +1316,87 @@ if not ('.' in __name__):
         sys.setdefaultencoding('utf-8')
         import doctest
         doctest.testmod()
+
+"""
+Spatial Partitioning
+"""
+def spatial_part(geom, n_splits):
+    # check if split is a power of 2
+    if((n_splits != 0 and ((n_splits & (n_splits - 1)) == 0) == False) or (n_splits > 32)):
+        raise functions.OperatorError('spatial_part','Number of splits must be a power of 2 and <= 32')
+    grid = create_grid(n_splits)    
+    geometry = ogr.CreateGeometryFromWkt(geom)
+    results = []
+    # Intersections between the geometry and the grid
+    for i in range(0, n_splits):
+        if("EMPTY" in grid[i].Intersection(geometry).ExportToWkt()):
+            continue
+        else:
+            results.append(float(i))
+    resultsStr = ', '.join(str(e) for e in results)
+    return resultsStr
+
+spatial_part.registered=True
+
+def create_grid(n_splits):
+
+    minLat    =      0
+    maxLat    =   90.0
+    minLong   = -180.0
+    maxLong   =      0
+    rangeLong =  abs(maxLong) + abs(minLong)
+    rangeLat  =  abs(maxLat)  + abs(minLat)
+    boundaries = []
+    polygons   = []
+
+    # Split the grid into n_splits parts
+    if(n_splits == 2):
+        longSplit = rangeLong / 2
+        latSplit  = 0.0
+        currLong = minLong
+        for i in range(0, n_splits):
+            temp = [currLong, minLat, currLong + longSplit, maxLat]
+            boundaries.append(temp)
+            currLong = currLong + longSplit
+    else:
+        currLong = minLong
+        currLat  = minLat
+        latSplit  = rangeLat
+        longSplit = rangeLong
+        n_longSplits = 0
+        for i in range(0, int(ceil(sqrt(n_splits)))):
+            if(i % 2  == 0 or i == 0):
+                longSplit = longSplit / 2
+                n_longSplits += 1
+            else:
+                latSplit  = latSplit / 2
+        counter = 0
+        n_longTiles = n_longSplits * 2
+        for i in range(0, n_splits):
+            boundaries.append([currLong, currLat, currLong + longSplit, currLat + latSplit])
+            counter += 1
+            if(counter == n_longTiles):
+                currLong = minLong
+                currLat  = currLat + latSplit
+                counter = 0
+            else:
+                currLong = currLong + longSplit
+    
+    # create the polygons that form the grid
+    for i in range(0, n_splits):
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint(boundaries[i][0], boundaries[i][1])
+        ring.AddPoint(boundaries[i][2], boundaries[i][1])
+        ring.AddPoint(boundaries[i][2], boundaries[i][3])
+        ring.AddPoint(boundaries[i][0], boundaries[i][3])
+        ring.AddPoint(boundaries[i][0], boundaries[i][1])
+        poly = ogr.Geometry(ogr.wkbPolygon)
+        poly.AddGeometry(ring)
+        polygons.append(poly)
+
+    return polygons
+
+def dummy(w_e):
+    return 1
+
+dummy.registered=True

@@ -4,12 +4,14 @@
 package madgik.exareme.master.engine.parser;
 
 import com.google.gson.Gson;
+
 import madgik.exareme.common.app.engine.DMQuery;
 import madgik.exareme.common.schema.*;
 import madgik.exareme.common.schema.expression.*;
 import madgik.exareme.master.client.AdpDBClientProperties;
 import madgik.exareme.master.registry.Registry;
 import madgik.exareme.utils.embedded.db.*;
+
 import org.apache.log4j.Logger;
 
 import java.io.ByteArrayInputStream;
@@ -94,8 +96,24 @@ public class AdpDBParser {
 
             Select query = new Select(id, q, outView);
             addRunOnParts(out.getName(), q, query);
+            
             id++;
+            /*if(query.getQuery().contains("intersects")){
+            	log.debug("GEOSPATIAL QUERY");
+            	 TableView spatialview = new TableView(out);
+                 outView.setPattern(q.getOutputDataPattern());
+                 outView.setNumOfPartitions(q.getNumberOfOutputPartitions());
+                 for (String column : q.getPartitionColumns()) {
+                     outView.addPatternColumn(column);
+                 }
+            	Select spatialite = query;
+            	spatialite.setQuery("select load_extension('/usr/local/lib/mod_spatialite') ");
+            	script.addQuery(spatialite);
+            	id++;
+            	continue;
+    		}*/
             script.addQuery(query);
+            
         }
         // Do not validate the query
         // TODO(herald):
@@ -169,6 +187,9 @@ public class AdpDBParser {
 
         log.debug("Checking queries for semantic errors ...");
         for (Select q : script.getSelectQueries()) {
+        	/*if(q.getQuery().contains("intersects")){
+        		log.debug("GEOSPATIAL!!!");
+        		q.setQuery("select load_extension('/usr/local/lib/mod_spatialite') ");}*/
             if (registry.getPhysicalTable(q.getOutputTable().getName()) != null) {
                 throw new SemanticException(
                     "Table exists: " + registry.getPhysicalTable(q.getOutputTable().getName()));

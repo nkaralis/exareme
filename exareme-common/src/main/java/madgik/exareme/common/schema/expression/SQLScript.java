@@ -40,6 +40,15 @@ public class SQLScript implements Serializable {
     }
 
     public void addSelect(SQLSelect query) {
+//    	if(query.getSql().contains("intersects")){
+//    		SQLSelect spatialite = new SQLSelect();
+//    		spatialite.setInputDataPattern(DataPattern.direct_product);
+//    		spatialite.setOutputDataPattern(DataPattern.same);
+//    		spatialite.setSql("select load_extension('/usr/local/lib/mod_spatialite') ");
+//    		spatialite.setResultTable("geo"+query.getResultTable(), true, false);
+//    		spatialite.setComments(new Comments());
+//    		queries.add(spatialite);
+//    	}
         queries.add(query);
     }
 

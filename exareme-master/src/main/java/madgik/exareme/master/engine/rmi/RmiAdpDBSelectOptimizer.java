@@ -576,7 +576,6 @@ public class RmiAdpDBSelectOptimizer {
 				AdpDBSelectOperator dbOp = new AdpDBSelectOperator(AdpDBOperatorType.runQuery, query, oPart, props.isCachedEnable());
 				ListUtil.setItem(state.dbOps, runQuery.opID, dbOp);
 				dbOp.addOutput(queryState.outputTable.getName(), oPart);
-
 				// Filter only the specified partitions
 				for (int i = 0; i < inputs.size(); i++) {
 					ConcreteOperator fromOp = inputs.get(i)[idxs[i]];

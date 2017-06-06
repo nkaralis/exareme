@@ -692,7 +692,34 @@ public class HttpAsyncDecomposerHandler implements HttpAsyncRequestHandler<HttpR
 							}
 
 						}
-					} else {
+					} else if(query.startsWith("distributed")){
+						AdpDBClientProperties props = new AdpDBClientProperties(dbname, "", "", useCache, false,
+                                false, false, -1, 10, null);
+                        AdpDBClient dbClient = AdpDBClientFactory.createDBClient(manager, props);
+                        AdpDBClientQueryStatus status = null;
+
+                        Map<String, String> extraCommands = new HashMap<String, String>();
+                        HashMap<String, Pair<byte[], String>> hashQueryMap = new HashMap<>();
+                        List<SQLQuery> subqueries = new ArrayList<SQLQuery>();
+						 if (useCache) {
+                             status = dbClient.query("dquery", query, hashQueryMap, extraCommands, subqueries);
+                         } else {
+                             status = dbClient.query("dquery", query, extraCommands);
+                         }
+						 if(status!=null){
+								while (status.hasFinished() == false && status.hasError() == false) {
+								
+									Thread.sleep(100);
+								}
+								if (status.hasError()) {
+									throw new RuntimeException(status.getError());
+								}
+						 }
+						 InputStreamEntity se = new InputStreamEntity(create1ResultStream(), -1, ContentType.TEXT_PLAIN);
+                         log.debug("Sending 1 : " + se.toString());
+                         httpResponse.setEntity(se);
+					}
+					else{
 						log.error("Bad request");
 						throw new RuntimeException("Bad Request");
 					}
