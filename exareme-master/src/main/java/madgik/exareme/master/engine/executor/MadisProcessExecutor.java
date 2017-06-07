@@ -234,9 +234,7 @@ public class MadisProcessExecutor {
 				script.append(queryStms.get(queryNo) + ";\n\n");
 			}
 			int outputParts = output.getNumOfPartitions();
-			script.append("-- OUTPUTPARTS = " + outputParts + "\n");
 			if (outputParts < 2) {
-				script.append("-- LOCAL MODE 1 WORKER\n");
 				// Create the query
 				script.append("create table " + outputTable + " as \n");
 				script.append(query + ";\n\n");
