@@ -25,6 +25,7 @@ import java.io.File;
 import java.rmi.RemoteException;
 import java.rmi.ServerException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -229,6 +230,7 @@ public class MadisProcessExecutor {
 			// script.append("explain query plan " + query + ";\n\n");
 			
 			script.append("-- Run Query \n");
+			log.info(query);
 			List<String> queryStms = state.getOperator().getQuery().getQueryStatements();
 			for (int queryNo = 0; queryNo < (queryStms.size() - 1); ++queryNo) {
 				script.append(queryStms.get(queryNo) + ";\n\n");
@@ -236,8 +238,30 @@ public class MadisProcessExecutor {
 			int outputParts = output.getNumOfPartitions();
 			if (outputParts < 2) {
 				// Create the query
-				script.append("create table " + outputTable + " as \n");
-				script.append(query + ";\n\n");
+				if (query.contains("geometry")){
+					String tempQuery = "";
+					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("from"));
+					cols = cols.replaceAll(" ", "");
+					String fromClause = query.substring(query.indexOf("from") + 4);
+					ArrayList<String> colsList = new ArrayList<String>(Arrays.asList(cols.split(",")));
+					for(int i = 0; i < colsList.size(); i++){
+						if(colsList.get(i).equals("geometry"))
+							continue;
+						tempQuery += colsList.get(i);
+					}
+					String newQuery = "select initspatialmetadata(); ";
+					newQuery += "create table " + outputTable + " as select ";
+					newQuery += tempQuery;
+					newQuery += " from " + fromClause +" limit 0; " ;
+					newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'POLYGON', 'XY', 1); ";
+					newQuery += "insert into "+ outputTable +" (" + tempQuery + ",geomcol) select " + tempQuery + ",st_geomfromtext(geometry, 4326) from " + fromClause + "; ";
+					newQuery += "select createspatialindex('" + outputTable + "', 'geomcol');\n";
+					script.append(newQuery);
+				}
+				else{
+					script.append("create table " + outputTable + " as \n");
+					script.append(query + ";\n\n");
+				}
 				List<Integer> parts = state.getOperator().getOutputPartitions(outputTable);
 				if (parts.size() != 1) {
 					throw new ServerException("Output table extected to have only one output but has " + parts.size());
@@ -249,15 +273,44 @@ public class MadisProcessExecutor {
 				if (broadcast) {
 					script.append("output split:1 '" + outputTable + ".db' select 0, * from (" + query + ") as q;\n\n");
 				} else {
-					script.append("output split:" + outputParts + " '" + outputTable + ".db'");
-					// script.append(" select hashmd5mod(");
-					// TODO(herald): change it to the following ...
-					script.append(" select spatial_part(");
-					for (String column : output.getPatternColumnNames()) {
-						script.append(column + ", ");
+					if(query.contains("geometry")){
+						String tempQuery = "";
+						String cols = query.substring(query.indexOf("select") + 7, query.indexOf("from"));
+						cols = cols.replaceAll(" ", "");
+						String fromClause = query.substring(query.indexOf("from") + 4);
+						ArrayList<String> colsList = new ArrayList<String>(Arrays.asList(cols.split(",")));
+						for(int i = 0; i < colsList.size(); i++){
+							if(colsList.get(i).equals("geometry"))
+								continue;
+							tempQuery += colsList.get(i);
+						}
+						String newQuery = "select initspatialmetadata(); ";
+						newQuery += "create table " + outputTable + "temp as select ";
+						newQuery += tempQuery;
+						newQuery += " from " + fromClause +" limit 0; " ;
+						newQuery += "select addgeometrycolumn('"+ outputTable +"temp', 'geomcol', 4326, 'POLYGON', 'XY', 1); ";
+						newQuery += "insert into "+ outputTable +"temp (" + tempQuery + ",geomcol) select " + tempQuery + ",st_geomfromtext(geometry, 4326) from " + fromClause + "; ";
+						//newQuery += "select createspatialindex('" + outputTable + "', 'geomcol');\n";
+						script.append(newQuery);
+						script.append("output split:" + outputParts + " '" + outputTable + ".db'");
+						script.append(" select spatial_part(st_astext(");
+						for (String column : output.getPatternColumnNames()) {
+							script.append(column + "), ");
+						}
+						script.append(outputParts + "),* from (" + "select " + tempQuery + ", geomcol from " + outputTable + "temp) as q; ");
+						//script.append("select createspatialindex('" + outputTable + "', 'geomcol');\n");
 					}
-					script.append(outputParts + "),* from (" + query + ") as q;\n\n");
-//					script.append(" select 0.0, 1.0, 2.0, 3.0, * from (" + query + ") as q;\n\n");
+					else{
+						script.append("output split:" + outputParts + " '" + outputTable + ".db'");
+						// script.append(" select hashmd5mod(");
+						// TODO(herald): change it to the following ...
+						script.append(" select spatial_part(");
+						for (String column : output.getPatternColumnNames()) {
+							script.append(column + ", ");
+						}
+						script.append(outputParts + "),* from (" + query + ") as q;\n\n");
+	//					script.append(" select 0.0, 1.0, 2.0, 3.0, * from (" + query + ") as q;\n\n");
+					}
 				}
 			}
 			if (state.getOperator().getQuery().getIndexCommand() != null) {

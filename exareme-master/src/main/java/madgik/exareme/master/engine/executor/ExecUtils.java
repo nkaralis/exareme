@@ -45,7 +45,7 @@ public class ExecUtils {
         log.debug("Process Directory: " + directory.getAbsolutePath());
         try {
             //Process p = procManager.createProcess(directory, python, engine, madisMainDB);
-        	Process p = procManager.createProcess(directory, "python", "/home/nkaralis/workspace/exareme-dev/exareme-tools/madis/src/mterm.py", madisMainDB);
+        	Process p = procManager.createProcess(directory, "python", "/home/nkaralis/workspace/exareme_dev/exareme-tools/madis/src/mterm.py", madisMainDB);
             p.getOutputStream().write(query.toString().getBytes());
             p.getOutputStream().flush();
             p.getOutputStream().close();

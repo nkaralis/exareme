@@ -56,16 +56,18 @@ public class ExaremeJDBCTest {
         		  + "where intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) = 1";
         String q2 = "select * from lilou4";
         String q3 = "distributed drop table lilou5;";
-        String q4 = "distributed create table lilou5 to 2 on geometry as external select geometry from"
+        String q4 = "distributed create table lilou5 to 2 on geomcol as external select id, geometry from"
         		  + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";
-        String q5 = "distributed create table results as select l1.geometry, l2.geometry from lilou4 l1, lilou4 l2 "
+        String q5 = "distributed create table lilou5 as external select id, geometry from"
+      		      + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";;
+        String q6 = "distributed create table results as select l1.geometry, l2.geometry from lilou4 l1, lilou4 l2 "
         		  + "where st_intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) = 1;";
         
         Statement st = conn.createStatement();
         log.info("Statement created.");
         //ResultSet rs1 = st.executeQuery("select load_extension('/usr/local/lib/mod_spatialite')");
 
-        ResultSet rs = st.executeQuery(q4);
+        ResultSet rs = st.executeQuery(q2);
         log.info("Query executed.");
         printResultset(rs);
         rs.close();
