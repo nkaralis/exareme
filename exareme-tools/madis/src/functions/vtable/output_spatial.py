@@ -261,12 +261,12 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                 else:
                     create_schema='create table '+tname+'('
                 create_schema+='`'+unicode(schema[0][0])+'`'+ (' '+unicode(schema[0][1]) if schema[0][1]!=None else '')
-                for colname, coltype in schema[1:]:
+                for colname, coltype in schema[1:len(schema)-1]:
                     create_schema+=',`'+unicode(colname)+'`'+ (' '+unicode(coltype) if coltype!=None else '')
-                create_schema+='); begin exclusive;'
+                create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "polygon", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
                 list(cursor.execute(create_schema))
                 insertquery="insert into "+tname+' values('+','.join(['?']*len(schema))+')'
-                #raise functions.OperatorError("output", schema[0][0])
+                #raise functions.OperatorError("output", schema[1:len(schema)])
                 return c, cursor, insertquery
 
             if 'pagesize' in formatArgs:
@@ -341,6 +341,8 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                             insertqueryw = t[2]
                         cursors = tuple(cursors)
                         for row in diter:
+                            #row += ("st_geomfromtext('"+row[2]+"',4326)", )
+                            #raise functions.OperatorError("output", row)
                             if(len(row[0]) > 3):
                                 parts = row[0].split(",")
                                 for i in range(0, len(parts)):

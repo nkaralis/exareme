@@ -1395,8 +1395,3 @@ def create_grid(n_splits):
         polygons.append(poly)
 
     return polygons
-
-def dummy(w_e):
-    return 1
-
-dummy.registered=True
