@@ -1340,12 +1340,12 @@ spatial_part.registered=True
 
 def create_grid(n_splits):
 
-    minLat    =      0
-    maxLat    =   90.0
-    minLong   = -180.0
-    maxLong   =      0
-    rangeLong =  abs(maxLong) + abs(minLong)
-    rangeLat  =  abs(maxLat)  + abs(minLat)
+    minLat    =   25.0
+    maxLat    =   37.0
+    minLong   = -107.0
+    maxLong   = -093.0
+    rangeLong =  abs(minLong) - abs(maxLong) #temporary
+    rangeLat  =  abs(maxLat)  - abs(minLat)  #temporary
     boundaries = []
     polygons   = []
 
@@ -1355,9 +1355,10 @@ def create_grid(n_splits):
         latSplit  = 0.0
         currLong = minLong
         for i in range(0, n_splits):
-            temp = [currLong, minLat, currLong + longSplit, maxLat]
+            temp = [currLong, minLat, currLong+longSplit, maxLat]
             boundaries.append(temp)
             currLong = currLong + longSplit
+        #raise functions.OperatorError('spatial_part',boundaries)
     else:
         currLong = minLong
         currLat  = minLat
@@ -1381,6 +1382,7 @@ def create_grid(n_splits):
                 counter = 0
             else:
                 currLong = currLong + longSplit
+        #raise functions.OperatorError('spatial_part',boundaries)
     
     # create the polygons that form the grid
     for i in range(0, n_splits):
@@ -1395,3 +1397,6 @@ def create_grid(n_splits):
         polygons.append(poly)
 
     return polygons
+
+create_grid.registered=True
+

@@ -17,7 +17,7 @@ public class ExaremeGatewayStart {
 
 
 
-        final ExaremeCluster cluster = ExaremeClusterFactory.createMiniCluster(1098, 8088, 1);
+        final ExaremeCluster cluster = ExaremeClusterFactory.createMiniCluster(1098, 8088, 8);
         cluster.start();
         final ExaremeGateway gateway =
             ExaremeGatewayFactory.createHttpServer(cluster.getDBManager());

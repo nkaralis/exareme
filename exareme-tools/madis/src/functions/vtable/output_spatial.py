@@ -263,7 +263,8 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                 create_schema+='`'+unicode(schema[0][0])+'`'+ (' '+unicode(schema[0][1]) if schema[0][1]!=None else '')
                 for colname, coltype in schema[1:len(schema)-1]:
                     create_schema+=',`'+unicode(colname)+'`'+ (' '+unicode(coltype) if coltype!=None else '')
-                create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "polygon", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
+                ##### my addition for the creation of the r*-tree on every partition #####
+                create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "linestring", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
                 list(cursor.execute(create_schema))
                 insertquery="insert into "+tname+' values('+','.join(['?']*len(schema))+')'
                 #raise functions.OperatorError("output", schema[1:len(schema)])

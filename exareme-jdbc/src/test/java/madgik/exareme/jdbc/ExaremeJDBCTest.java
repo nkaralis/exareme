@@ -54,10 +54,11 @@ public class ExaremeJDBCTest {
         //String q="select * from "+tablename;
         String q1 = "select distinct l1.id as id1, l2.id as id2 from lilou4 l1, lilou5 l2 "
         		  + "where st_intersects(l1.geomcol, l2.geomcol) = 1";
-        String q2 = "select * from lilou5";
-        String q3 = "distributed drop table lilou4;";
-        String q4 = "distributed create table lilou4 to 4 on geometry as external select id, geometry, st_geomfromtext(geometry,4326) from"
-        		  + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";
+        String q2 = "select pk_uid from arealm_merge where ST_Distance(geomcol, ST_GeomFromText('POINT(-97.7 30.30)')) < 1000";
+        String q3 = "distributed drop table edges_merge;";
+        String q4 = "distributed create table edges_merge to 8 on geometry as external "
+      		  + "select pk_uid, statefp, tlid, tfidl, tfidr, mtfcc, fullname, smid, lfromadd, rtoadd, zipl, zipr, featcat, hydroflg, railflg, roadflg, olfflg, passflg, divroad, exttyp, ttyp, deckedroad, artpath, persist, gcseflg, offsetl, offsetr, tnidf, tnidt, geometry, st_geomfromtext(geometry,4326) from"
+      		  + "(file file:/home/nkaralis/Datasets/Jackpine/edges_merge.tsv header:t) ;";
         String q5 = "distributed create table lilou5 as external select id, geometry from"
       		      + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";;
         String q6 = "distributed create table results as select l1.geometry, l2.geometry from lilou4 l1, lilou4 l2 "
@@ -66,7 +67,7 @@ public class ExaremeJDBCTest {
         Statement st = conn.createStatement();
         log.info("Statement created.");
 
-        ResultSet rs = st.executeQuery(q1);
+        ResultSet rs = st.executeQuery(q4);
         log.info("Query executed.");
         printResultset(rs);
         rs.close();
