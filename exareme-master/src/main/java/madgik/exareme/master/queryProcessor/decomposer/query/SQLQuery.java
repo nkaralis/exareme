@@ -166,6 +166,7 @@ public class SQLQuery {
 	}
 
 	public String toSQL() {
+		StringBuilder spatialindex = new StringBuilder();
 		StringBuilder output = new StringBuilder();
 		String separator = "";
 		if (this.isFederated()) {
@@ -327,14 +328,71 @@ public class SQLQuery {
 				if (DecomposerUtils.USE_CROSS_JOIN) {
 					joinKeyword = " CROSS JOIN \n";
 				}
-				for (Table t : getInputTables()) {
-					output.append(separator);
-					if (this.isFederated) {
-						output.append(t.toString());
-					} else {
-						output.append(t.toString().toLowerCase());
+				for ( int tab=0;tab<inputTables.size();tab++){
+					Table t = inputTables.get(tab);
+				
+					if(t.getName().toLowerCase().equals("spatialindex")){
+						//spatialite virtual table needs IN keyword
+						Set<String> conditionsWithSpatialIndex=new HashSet<String>();
+						for(int join=0;join<this.binaryWhereConditions.size();join++){
+							NonUnaryWhereCondition nuwc=binaryWhereConditions.get(join);
+							for(Column c:nuwc.getAllColumnRefs()){
+								if(c.getAlias().equals(t.getAlias())){
+									if(c.getName().toLowerCase().toString().equals("rowid")){
+										spatialindex.append(" and ");
+										for(Column c2:nuwc.getAllColumnRefs()){
+											if(!c2.getAlias().equals(t.getAlias())){
+												//it's the other column
+												spatialindex.append(c2.toString());
+												spatialindex.append(" IN ( select ");
+												spatialindex.append(t.getAlias());
+												spatialindex.append(".rowid from ");
+												spatialindex.append(t.toString());
+												spatialindex.append(" where ");
+											}
+										}
+									}
+									else{
+										conditionsWithSpatialIndex.add(nuwc.toString());
+									}
+									
+									binaryWhereConditions.remove(join);
+									join--;
+									break;
+								}
+							}
+						}
+						for(int unary=0;unary<unaryWhereConditions.size();unary++){
+							UnaryWhereCondition u=unaryWhereConditions.get(unary);
+							for(Column c:u.getAllColumnRefs()){
+								if(c.getAlias().equals(t.getAlias())){
+									conditionsWithSpatialIndex.add(u.toString());
+									unaryWhereConditions.remove(u);
+									unary--;
+									break;
+								}
+							}
+						}
+						inputTables.remove(tab);
+						tab--;
+						String and="";
+						for(String spatialCondition:conditionsWithSpatialIndex){
+							spatialindex.append(and);
+							spatialindex.append(spatialCondition);
+							and=" and ";
+						}
+						spatialindex.append(")");
 					}
-					separator = joinKeyword;
+					else{
+						output.append(separator);
+						if (this.isFederated) {
+							output.append(t.toString());
+						} else {
+							output.append(t.toString().toLowerCase());
+						}
+						separator = joinKeyword;
+					}
+					
 				}
 
 			}
@@ -358,6 +416,7 @@ public class SQLQuery {
 			output.append(wc.toString());
 			separator = " and \n";
 		}
+		output.append(spatialindex.toString());
 		if (getLimit() > -1 && this.getMadisFunctionString().startsWith("oracle ")) {
 			output.append(separator);
 			output.append("rownum <=");
