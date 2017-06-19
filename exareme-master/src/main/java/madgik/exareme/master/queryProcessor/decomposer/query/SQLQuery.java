@@ -332,6 +332,7 @@ public class SQLQuery {
 					Table t = inputTables.get(tab);
 				
 					if(t.getName().toLowerCase().equals("spatialindex")){
+						String tableNameCondition="";
 						//spatialite virtual table needs IN keyword
 						Set<String> conditionsWithSpatialIndex=new HashSet<String>();
 						for(int join=0;join<this.binaryWhereConditions.size();join++){
@@ -351,6 +352,9 @@ public class SQLQuery {
 												spatialindex.append(" where ");
 											}
 										}
+									}
+									else if(c.getName().toLowerCase().toString().equals("f_table_name")){
+										tableNameCondition=nuwc.toString();
 									}
 									else{
 										conditionsWithSpatialIndex.add(nuwc.toString());
@@ -375,11 +379,11 @@ public class SQLQuery {
 						}
 						inputTables.remove(tab);
 						tab--;
-						String and="";
+						spatialindex.append(" ");
+						spatialindex.append(tableNameCondition);
 						for(String spatialCondition:conditionsWithSpatialIndex){
-							spatialindex.append(and);
+							spatialindex.append(" and ");
 							spatialindex.append(spatialCondition);
-							and=" and ";
 						}
 						spatialindex.append(")");
 					}
