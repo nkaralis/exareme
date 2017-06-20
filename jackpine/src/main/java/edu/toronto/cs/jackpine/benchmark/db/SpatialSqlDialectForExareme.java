@@ -131,7 +131,10 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaOverlapsArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
 		
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Overlaps(a1.geomcol, a2.geomcol)");
+		//sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Overlaps(a1.geomcol, a2.geomcol) and a2.rowid in "
+		//		+ "(select rowid from spatialindex where f_table_name = 'arealm_merge' and search_frame = a1.geomcol)");
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2, spatialindex s where ST_Overlaps(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -141,7 +144,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaContainsArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Contains(a1.geomcol, a2.geomcol)");
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 , spatialindex s where ST_Contains(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
 		String sql = sb.toString();
 	  	return sql;
 	}
@@ -151,7 +155,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaWithinArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Within(a1.geomcol, a2.geomcol)");
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 , spatialindex s where ST_Within(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
 		String sql = sb.toString();
 	  	return sql;
 	}
@@ -161,8 +166,9 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaTouchesArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Touches(a1.geomcol, a2.geomcol)");
-	  	String sql = sb.toString();
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 , spatialindex s where ST_Touches(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
+		String sql = sb.toString();
 	  	return sql;
 	}
 
@@ -171,7 +177,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaEqualsArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
 		
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 where ST_Equals(a1.geomcol, a2.geomcol)");
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 , spatialindex s where ST_Equals(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
 	  	String sql = sb.toString();
 	  	return sql;
 	}
@@ -181,7 +188,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectAreaDisjointArea() { 
 		StringBuffer sb = new StringBuffer();
 		
-		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1, arealm_merge a2 where ST_Disjoint(a1.geomcol, a2.geomcol)");
+		sb.append("select a1.pk_uid, a2.pk_uid from  arealm_merge a1 , arealm_merge a2 , spatialindex s where ST_Disjoint(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = a1.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -193,7 +201,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 		StringBuffer sb = new StringBuffer();
 
 		// Generate the join SQL statement.
-		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e where ST_Intersects(e.geomcol, a.geomcol)");
+		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e , spatialindex s where ST_Intersects(e.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -203,7 +212,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectLineCrossesArea() {
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e where ST_crosses(e.geomcol, a.geomcol)");
+		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e , spatialindex s where ST_Crosses(e.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -213,7 +223,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectLineWithinArea() {
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e where ST_within(e.geomcol, a.geomcol)");
+		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e , spatialindex s where ST_Within(e.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -223,7 +234,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	public String getSelectLineTouchesArea() {
 		StringBuffer sb = new StringBuffer();
 		  
-		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e where ST_Touches(e.geomcol, a.geomcol)");
+		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e , spatialindex s where ST_Touches(e.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -234,7 +246,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 		StringBuffer sb = new StringBuffer();
 
 		// Generate the join SQL statement.
-		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e where ST_Overlaps(e.geomcol, a.geomcol)");
+		sb.append("select e.pk_uid, a.pk_uid from  arealm_merge a, edges_merge e , spatialindex s where ST_Overlaps(e.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -245,18 +258,20 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 		StringBuffer sb = new StringBuffer();
 
 		// Generate the join SQL statement. 
-		sb.append("select e1.gid  from  edges_merge e1 , edges_merge e2 where ST_overlaps(e1.geomcol, e2.geomcol) limit 5 ");
+		sb.append("select e1.pk_uid  from  edges_merge e1 , edges_merge e2 , spatialindex s where ST_Overlaps(e1.geomcol, e2.geomcol) "
+				+ "and e2.rowid = s.rowid and s.f_table_name = 'edges_merge' and s.search_frame = e1.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
 
 	@Override
-	/** Spatial Join Crosses(Line, Crosses) */
+	/** Spatial Join Crosses(Line, Line) */
 	public String getSelectLineCrossesLine() {
 		StringBuffer sb = new StringBuffer();
 
 		// Generate the join SQL statement. 
-		sb.append("select e1.gid  from  edges_merge e1 , edges_merge e2 where ST_crosses(e1.geomcol, e2.geomcol) limit 5 ");
+		sb.append("select e1.pk_uid  from  edges_merge e1 , edges_merge e2 , spatialindex s where ST_Crosses(e1.geomcol, e2.geomcol) "
+				+ "and e2.rowid = s.rowid and s.f_table_name = 'edges_merge' and s.search_frame = e1.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -265,7 +280,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	/** Spatial Join Equals(Point, Point) */
 	public String getSelectPointEqualsPoint() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
-		sb.append("select p1.pk_uid, p2.pk_uid from  pointlm_merge p1, pointlm_merge p2 where ST_Equals(p1.geomcol, p2.geomcol)");
+		sb.append("select p1.pk_uid, p2.pk_uid from  pointlm_merge p1, pointlm_merge p2 , spatialindex s where ST_Equals(p1.geomcol, p2.geomcol) "
+				+ "and p2.rowid = s.rowid and s.f_table_name = 'pointlm_merge' and s.search_frame = p1.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -276,7 +292,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 		StringBuffer sb = new StringBuffer();
 
 		// Generate the join SQL statement.
-		sb.append("select a.pk_uid, p.pk_uid from  arealm_merge a, pointlm_merge p where ST_Within(p.geomcol, a.geomcol)");
+		sb.append("select a.pk_uid, p.pk_uid from arealm_merge a, pointlm_merge p, spatialindex s where ST_Within(p.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = p.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -285,7 +302,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	/** Spatial Join Intersects(Point, Area) */
 	public String getSelectPointIntersectsArea() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
-		sb.append("select a.pk_uid, p.pk_uid from  arealm_merge a, pointlm_merge p where ST_Intersects(p.geomcol, a.geomcol)");
+		sb.append("select a.pk_uid, p.pk_uid from arealm_merge a, pointlm_merge p, spatialindex s where ST_Intersects(p.geomcol, a.geomcol) "
+				+ "and a.rowid = s.rowid and s.f_table_name = 'arealm_merge' and s.search_frame = p.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}
@@ -294,7 +312,8 @@ public class SpatialSqlDialectForExareme extends SqlDialectForExareme implements
 	/** Spatial Join Intersects(Point, Line) */
 	public String getSelectPointIntersectsLine() { //DONE(2)
 		StringBuffer sb = new StringBuffer();
-		sb.append("select e.pk_uid, p.pk_uid from  edges_merge e, pointlm_merge p where ST_Intersects(p.geomcol, e.geomcol)");
+		sb.append("select e.pk_uid, p.pk_uid from  edges_merge e, pointlm_merge p, spatialindex s where ST_Intersects(p.geomcol, e.geomcol) "
+				+ "and p.rowid = s.rowid and s.f_table_name = 'edge_merge' and s.search_frame = e.geomcol");
 		String sql = sb.toString();
 		return sql;
 	}

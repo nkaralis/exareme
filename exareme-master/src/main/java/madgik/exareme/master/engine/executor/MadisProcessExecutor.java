@@ -69,6 +69,7 @@ public class MadisProcessExecutor {
 			script.append("PRAGMA page_size = " + page_size_B + "; \n");
 			script.append("PRAGMA page_size; \n");
 			script.append("PRAGMA cache_size; \n");
+			//script.append("select sqlite_version();");
 			script.append("\n");
 			script.append("-- Additional Commands \n");
 			if (additionalCommands != null) {
@@ -109,7 +110,10 @@ public class MadisProcessExecutor {
 
 			// Attach the input tables.
 			StringBuilder attachedDBs = new StringBuilder();
-			for (String input : state.getOperator().getInputTables()) {
+			String[] inputTables = state.getOperator().getInputTables().toArray(new String[2]);
+			script.append("-- input tables: "+ inputTables.toString() +"\n");
+			for (int i = inputTables.length - 1; i>=0; i--) {
+				String input = inputTables[i];
 				List<Integer> parts = state.getOperator().getInputPartitions(input);
 				for (int part : parts) {
 					String loc = null;
