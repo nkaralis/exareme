@@ -328,6 +328,14 @@ public class SQLQuery {
 				if (DecomposerUtils.USE_CROSS_JOIN) {
 					joinKeyword = " CROSS JOIN \n";
 				}
+				
+				/* change the order of join in order to have a more efficient query */
+//				if (inputTables.size() > 2){
+//					if(!binaryWhereConditions.toString().contains(inputTables.get(0).toString())){
+//						Collections.swap(inputTables, 0, 1);
+//					}
+//				}
+				
 				for ( int tab=0;tab<inputTables.size();tab++){
 					Table t = inputTables.get(tab);
 				

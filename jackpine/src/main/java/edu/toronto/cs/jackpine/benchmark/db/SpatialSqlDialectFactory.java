@@ -48,7 +48,7 @@ public class SpatialSqlDialectFactory
     al.add(new SpatialSqlDialectForInformix());
     al.add(new SpatialSqlDialectForIngres());
     al.add(new SpatialSqlDialectForMysql());
-    //al.add(new SpatialSqlDialectForPostgreSQL());
+    al.add(new SpatialSqlDialectForPostgreSQL());
     al.add(new SpatialSqlDialectForExareme());
  
     dialects = al;

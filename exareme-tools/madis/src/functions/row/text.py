@@ -1324,6 +1324,8 @@ def spatial_part(geom, n_splits):
     # check if split is a power of 2
     if((n_splits != 0 and ((n_splits & (n_splits - 1)) == 0) == False) or (n_splits > 32)):
         raise functions.OperatorError('spatial_part','Number of splits must be a power of 2 and <= 32')
+    if(n_splits == 1):
+        return '0.0'
     grid = create_grid(n_splits)    
     geometry = ogr.CreateGeometryFromWkt(geom)
     results = []
@@ -1334,6 +1336,7 @@ def spatial_part(geom, n_splits):
         else:
             results.append(float(i))
     resultsStr = ', '.join(str(e) for e in results)
+    #raise functions.OperatorError('spatial_part',resultsStr)
     return resultsStr
 
 spatial_part.registered=True

@@ -48,7 +48,6 @@ public class ReadSpatialLineCrossesArea extends SpatialScenarioBase
   public void prepare() throws Exception
   {
 	  SpatialSqlDialect dialect = helper.getSpatialSqlDialect(); 
-	    
 	  //pstmtArray = new PreparedStatement[1];
 	  sql = dialect.getSelectLineCrossesArea();
 	  stmt = conn.createStatement();

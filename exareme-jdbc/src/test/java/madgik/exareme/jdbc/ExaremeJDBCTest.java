@@ -5,6 +5,9 @@ import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.*;
 
 /**
@@ -13,7 +16,9 @@ import java.sql.*;
 public class ExaremeJDBCTest {
     private static final Logger log = Logger.getLogger(ExaremeJDBCTest.class);
 
-    public static void printResultset(ResultSet rs) throws SQLException {
+    public static void printResultset(ResultSet rs) throws SQLException, FileNotFoundException, UnsupportedEncodingException {
+    	PrintWriter writer = new PrintWriter("/home/nkaralis/Datasets/Jackpine/results/ids/parts8/aoa.txt", "UTF-8");
+    	
         log.info("Columns: " + rs.getMetaData().getColumnCount());
         int count = 0;
         int size = 0;
@@ -27,12 +32,14 @@ public class ExaremeJDBCTest {
                 size += next[c].length();
             }
             for (String v : next) {
-                log.info(v + "\t");
+                writer.print(v + "\t");
             }
             log.info("");
             ++count;
+            writer.println("");
         }
         System.out.println("Count: " + count + "\n\tSize: " + size);
+        writer.close();
     }
 
     @Before public void setUp() throws Exception {
@@ -52,12 +59,12 @@ public class ExaremeJDBCTest {
 
         //String tablename = "sales";
         //String q="select * from "+tablename;
-        String q1 = "select distinct l1.id as id1, l2.id as id2 from lilou4 l1, lilou5 l2 "
-        		  + "where st_intersects(l1.geomcol, l2.geomcol) = 1";
+        String q1 = "select a1.pk_uid, a2.pk_uid from  area8 a1 , area8 a2 , spatialindex s where a1.pk_uid < a2.pk_uid and ST_Overlaps(a1.geomcol, a2.geomcol) "
+				+ "and a2.rowid = s.rowid and s.f_table_name = 'area8' and s.search_frame = a1.geomcol";
         String q2 = "select pk_uid from arealm_merge where ST_Distance(geomcol, ST_GeomFromText('POINT(-97.7 30.30)')) < 1000";
-        String q3 = "distributed drop table edges_merge;";
-        String q4 = "distributed create table edges_merge to 8 on geometry as external "
-      		  + "select pk_uid, statefp, tlid, tfidl, tfidr, mtfcc, fullname, smid, lfromadd, rtoadd, zipl, zipr, featcat, hydroflg, railflg, roadflg, olfflg, passflg, divroad, exttyp, ttyp, deckedroad, artpath, persist, gcseflg, offsetl, offsetr, tnidf, tnidt, geometry, st_geomfromtext(geometry,4326) from"
+        String q3 = "distributed drop table points1;";
+        String q4 = "distributed create table edges1 to 1 on geometry as external "
+      		  + "select pk_uid, statefp, tlid, tfidl, tfidr, mtfcc, fullname, smid, lfromadd, rtoadd, zipl, zipr, featcat, hydroflg, railflg, roadflg, olfflg, passflg, divroad, exttyp, ttyp, deckedroad, artpath, persist, gcseflg, offsetl, offsetr, tnidf, tnidt, geometry from"
       		  + "(file file:/home/nkaralis/Datasets/Jackpine/edges_merge.tsv header:t) ;";
         String q5 = "distributed create table lilou5 as external select id, geometry from"
       		      + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";;
@@ -67,7 +74,7 @@ public class ExaremeJDBCTest {
         Statement st = conn.createStatement();
         log.info("Statement created.");
 
-        ResultSet rs = st.executeQuery(q4);
+        ResultSet rs = st.executeQuery(q1);
         log.info("Query executed.");
         printResultset(rs);
         rs.close();

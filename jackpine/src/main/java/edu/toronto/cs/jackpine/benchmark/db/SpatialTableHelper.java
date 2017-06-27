@@ -50,6 +50,7 @@ public class SpatialTableHelper extends TableHelper
   {
     super(url,login,password);
     this.spatialSqlDialect = SpatialSqlDialectFactory.getInstance().getDialect(url);
+    System.out.println("hello " + spatialSqlDialect);
   }
   
   

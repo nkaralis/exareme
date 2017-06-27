@@ -110,10 +110,11 @@ public class MadisProcessExecutor {
 
 			// Attach the input tables.
 			StringBuilder attachedDBs = new StringBuilder();
-			String[] inputTables = state.getOperator().getInputTables().toArray(new String[2]);
-			script.append("-- input tables: "+ inputTables.toString() +"\n");
-			for (int i = inputTables.length - 1; i>=0; i--) {
-				String input = inputTables[i];
+//			String[] inputTables = state.getOperator().getInputTables().toArray(new String[2]);
+//			script.append("-- input tables: "+ state.getOperator().getInputTables().toString() +"\n");
+//			for(int i = 0; i < inputTables.length; i++){
+//				String input = inputTables[i];
+			for (String input : state.getOperator().getInputTables()) {
 				List<Integer> parts = state.getOperator().getInputPartitions(input);
 				for (int part : parts) {
 					String loc = null;
@@ -244,9 +245,9 @@ public class MadisProcessExecutor {
 				// Create the query
 				if (query.contains("geometry")){
 					String tempQuery = "";
-					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("from"));
+					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("geometry")+8);
 					cols = cols.replaceAll(" ", "");
-					String fromClause = query.substring(query.indexOf("from") + 4);
+					String fromClause = query.substring(query.indexOf(" from") + 5);
 					ArrayList<String> colsList = new ArrayList<String>(Arrays.asList(cols.split(",")));
 					for(int i = 0; i < colsList.size(); i++){
 						if(colsList.get(i).equals("geometry"))
@@ -255,10 +256,10 @@ public class MadisProcessExecutor {
 					}
 					String newQuery = "select initspatialmetadata(); ";
 					newQuery += "create table " + outputTable + " as select ";
-					newQuery += tempQuery;
+					newQuery += cols;
 					newQuery += " from " + fromClause +" limit 0; " ;
-					newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'POLYGON', 'XY', 1); ";
-					newQuery += "insert into "+ outputTable +" (" + tempQuery + ",geomcol) select " + tempQuery + ",st_geomfromtext(geometry, 4326) from " + fromClause + "; ";
+					newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'LINESTRING', 'XY', 1); ";
+					newQuery += "insert into "+ outputTable +" (" + cols + ",geomcol) select " + cols + ",st_geomfromtext(geometry, 4326) from " + fromClause + "; ";
 					newQuery += "select createspatialindex('" + outputTable + "', 'geomcol');\n";
 					script.append(newQuery);
 				}
@@ -277,12 +278,14 @@ public class MadisProcessExecutor {
 				if (broadcast) {
 					script.append("output split:1 '" + outputTable + ".db' select 0, * from (" + query + ") as q;\n\n");
 				} else {
-					script.append("output_spatial split:" + outputParts + " '" + outputTable + ".db'");
-					script.append(" select spatial_part(");
-					for (String column : output.getPatternColumnNames()) {
-						script.append(column + ", ");
+					if(query.contains("geometry")){
+						script.append("output_spatial split:" + outputParts + " '" + outputTable + ".db'");
+						script.append(" select spatial_part(");
+						for (String column : output.getPatternColumnNames()) {
+							script.append(column + ", ");
+						}
+						script.append(outputParts + "),* from (" + query + ") as q; ");
 					}
-					script.append(outputParts + "),* from (" + query + ") as q; ");
 				}
 			}
 			if (state.getOperator().getQuery().getIndexCommand() != null) {
