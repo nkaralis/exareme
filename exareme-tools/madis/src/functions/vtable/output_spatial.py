@@ -264,10 +264,18 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                 for colname, coltype in schema[1:len(schema)-1]:
                     create_schema+=',`'+unicode(colname)+'`'+ (' '+unicode(coltype) if coltype!=None else '')
                 ##### my addition for the creation of the r*-tree on every partition #####
-                create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "point", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
+                #raise functions.OperatorError("output_spatial", tname)
+                if "points1" in tname:
+                    create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "POINT", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
+                elif "area1" in tname:
+                    create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "POLYGON", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
+                else:
+                    create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "LINESTRING", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
                 list(cursor.execute(create_schema))
-                insertquery="insert into "+tname+' values('+','.join(['?']*len(schema))+')'
-                #raise functions.OperatorError("output", schema[1:len(schema)])
+                insertquery="insert into "+tname+' values('+','.join(['?']*(len(schema)-1))
+                insertquery += ",st_geomfromtext(?,4326))"
+                #raise functions.OperatorError("output_spatial", insertquery)
+                
                 return c, cursor, insertquery
 
             if 'pagesize' in formatArgs:
@@ -322,6 +330,7 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                         senders = []
                         for i in xrange(0, maxparts):
                             t = createdb(os.path.join(fullpath, filename+'.'+str(i)+ext), tablename, schema[1:], page_size)
+                            #raise functions.OperatorError("output_spatial", t[2])
                             it = t[1].executesplit(t[2])
                             iters.append(it)
                             senders.append(it.send)
@@ -336,23 +345,33 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                             it.close()
                     else:
                         for i in xrange(0, maxparts):
-                            t = createdb(os.path.join(fullpath, filename+'.'+str(i)+ext), tablename, schema[1:], page_size) 
+                            t = createdb(os.path.join(fullpath, filename+'.'+str(i)+ext), tablename, schema[1:], page_size)
+                            #raise functions.OperatorError("output_spatial", t)
                             cursors.append(t[1].execute)
                             dbcon.append((t[0], t[1]))
                             insertqueryw = t[2]
                         cursors = tuple(cursors)
                         for row in diter:
                             #row += ("st_geomfromtext('"+row[2]+"',4326)", )
-                            #raise functions.OperatorError("output", row)
+                            # wkt = cursor.execute("st_geomfromtext("+row[len(row)-1]+")")
+                            # rowList = []
+                            # for i in range(len(row)-1):
+                            #     rowList.append(row[i])
+                            # rowList.append("st_geomfromtext("+wkt+")")
+                            # row = tuple(rowList)
+                            #raise functions.OperatorError("output_spatial", row)
                             if(len(row[0]) > 3):
                                 parts = row[0].split(",")
+                                #raise functions.OperatorError("output_spatial", row)
                                 for i in range(0, len(parts)):
                                     cursors[hash(float(parts[i])) % maxparts](insertqueryw, row[1:])
                             else:
+                                #raise functions.OperatorError("output", (insertqueryw, row[1:]))
                                 cursors[hash(float(row[0])) % maxparts](insertqueryw, row[1:])
                         
                         
                     for c, cursor in dbcon:
+                        #raise functions.OperatorError("output_spatial", "hello")
                         if c != None:
                             if orderby:
                                 cursor.execute('pragma cache_size=-'+str(100000)+';create table '+tablename+' as select * from _'+tablename+' order by '+orderby)

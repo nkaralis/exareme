@@ -51,11 +51,13 @@ public class ExaremeGatewayJDBCTest {
        // String q="select * from "+tablename;
        String q = "select id  from lilou9 l1, lilou9 l2 where l1.id > l2.id limit 10";
         String q2 = "select distinct l1.id as liId, l2.id as l2Id from lilou9 l1, lilou9 l2 where l1.id<l2.id limit 10";
+
+       
         Statement st = conn.createStatement();
         log.info("Statement created.");
        
 
-        ResultSet rs = st.executeQuery(q);
+        ResultSet rs = st.executeQuery(q1);
         log.info("Query executed.");
 
         log.info("Columns: " + rs.getMetaData().getColumnCount());

@@ -258,7 +258,12 @@ public class MadisProcessExecutor {
 					newQuery += "create table " + outputTable + " as select ";
 					newQuery += cols;
 					newQuery += " from " + fromClause +" limit 0; " ;
-					newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'LINESTRING', 'XY', 1); ";
+					if (outputTable.equals("edges1"))
+						newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'LINESTRING', 'XY', 1); ";
+					else if (outputTable.equals("area1"))
+						newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'POLYGON', 'XY', 1); ";
+					else
+						newQuery += "select addgeometrycolumn('"+ outputTable +"', 'geomcol', 4326, 'POINT', 'XY', 1); ";
 					newQuery += "insert into "+ outputTable +" (" + cols + ",geomcol) select " + cols + ",st_geomfromtext(geometry, 4326) from " + fromClause + "; ";
 					newQuery += "select createspatialindex('" + outputTable + "', 'geomcol');\n";
 					script.append(newQuery);
