@@ -271,10 +271,11 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                     create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "POLYGON", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
                 else:
                     create_schema+='); select load_extension("/usr/local/lib/mod_spatialite"); select initspatialmetadata(); select addgeometrycolumn("'+tname+'", "geomcol", 4326, "LINESTRING", "XY"); select createspatialindex("'+tname+'", "geomcol"); begin exclusive;'
+                #raise functions.OperatorError("output_spatial", create_schema)
                 list(cursor.execute(create_schema))
                 insertquery="insert into "+tname+' values('+','.join(['?']*(len(schema)-1))
                 insertquery += ",st_geomfromtext(?,4326))"
-                #raise functions.OperatorError("output_spatial", insertquery)
+                #
                 
                 return c, cursor, insertquery
 

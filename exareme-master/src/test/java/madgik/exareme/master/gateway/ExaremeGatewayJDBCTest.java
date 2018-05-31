@@ -57,7 +57,7 @@ public class ExaremeGatewayJDBCTest {
         log.info("Statement created.");
        
 
-        ResultSet rs = st.executeQuery(q1);
+        ResultSet rs = st.executeQuery(q2);
         log.info("Query executed.");
 
         log.info("Columns: " + rs.getMetaData().getColumnCount());

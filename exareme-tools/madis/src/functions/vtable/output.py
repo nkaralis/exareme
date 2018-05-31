@@ -341,7 +341,8 @@ def outputData(diter, schema, connection, *args, **formatArgs):
                             insertqueryw = t[2]
                         cursors = tuple(cursors)
                         for row in diter:
-                            if(len(row[0]) > 3):
+                            #raise functions.OperatorError("len", row[0])
+                            if(row[0] > 3):
                                 parts = row[0].split(",")
                                 for i in range(0, len(parts)):
                                     cursors[hash(float(parts[i])) % maxparts](insertqueryw, row[1:])

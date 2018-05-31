@@ -244,6 +244,7 @@ public class MadisProcessExecutor {
 			if (outputParts < 2) {
 				// Create the query
 				if (query.contains("geometry")){
+					log.debug("HELLOOOOOOOOOOOOO");
 					String tempQuery = "";
 					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("geometry")+8);
 					cols = cols.replaceAll(" ", "");
@@ -290,6 +291,16 @@ public class MadisProcessExecutor {
 							script.append(column + ", ");
 						}
 						script.append(outputParts + "),* from (" + query + ") as q; ");
+					}
+					else {
+						script.append("output split:" + outputParts + " '" + outputTable + ".db'");
+						// script.append(" select hashmd5mod(");
+						// TODO(herald): change it to the following ...
+						script.append(" select hashmodarchdep(");
+						for (String column : output.getPatternColumnNames()) {
+							script.append(column + ", ");
+						}
+						script.append(outputParts + "),* from (" + query + ") as q;\n\n");
 					}
 				}
 			}

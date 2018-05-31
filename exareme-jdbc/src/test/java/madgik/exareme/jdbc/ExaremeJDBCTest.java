@@ -53,7 +53,7 @@ public class ExaremeJDBCTest {
         Class.forName("madgik.exareme.jdbc.federated.AdpDriver");
         
 
-        String database = "jdbc:fedadp:http://localhost:9090/home/nkaralis/exareme_db/test2";
+        String database = "jdbc:fedadp:http://localhost:9090/home/nkaralis/exareme_db/test6";
         Connection conn = DriverManager.getConnection(database);
         log.info("Connections created.");
 
@@ -62,7 +62,7 @@ public class ExaremeJDBCTest {
         String q1 = "select a1.pk_uid, a2.pk_uid from  area8 a1 , area8 a2 , spatialindex s where a1.pk_uid < a2.pk_uid and ST_Overlaps(a1.geomcol, a2.geomcol) "
 				+ "and a2.rowid = s.rowid and s.f_table_name = 'area8' and s.search_frame = a1.geomcol";
         String q2 = "select pk_uid from arealm_merge where ST_Distance(geomcol, ST_GeomFromText('POINT(-97.7 30.30)')) < 1000";
-        String q3 = "distributed drop table edges1;";
+        String q3 = "distributed drop table points1;";
         String q4 = "distributed create table edges1 to 2 on geometry as external "
       		  + "select pk_uid, statefp, tlid, tfidl, tfidr, mtfcc, fullname, smid, lfromadd, rtoadd, zipl, zipr, featcat, hydroflg, railflg, roadflg, olfflg, passflg, divroad, exttyp, ttyp, deckedroad, artpath, persist, gcseflg, offsetl, offsetr, tnidf, tnidt, geometry from"
       		  + "(file file:/home/nkaralis/Datasets/Jackpine/edges_merge_header.tsv header:t) ;";
@@ -70,16 +70,16 @@ public class ExaremeJDBCTest {
       		      + "(file file:/home/nkaralis/Datasets/geosparkresutls.tsv header:t) ;";;
         String q6 = "distributed create table results as select l1.geometry, l2.geometry from lilou4 l1, lilou4 l2 "
         		  + "where st_intersects(st_geomfromtext(l1.geometry),st_geomfromtext(l2.geometry)) = 1;";
-        String q7 = "distributed create table area1 to 2 on geometry as external select pk_uid, statefp, countyfp, ansicode, areaid, fullname, mtfcc, geometry from (file file:/home/nkaralis/Datasets/Jackpine/arealm_merge_header.tsv header:t);";
+        String q7 = "distributed create table area1 to 1 on geometry as external select pk_uid, statefp, countyfp, ansicode, areaid, fullname, mtfcc, geometry from (file file:/home/nkaralis/Datasets/Jackpine/arealm_merge_header.tsv header:t);";
         
-        String q8 = "distributed create table points1 to 2 on geometry as external select pk_uid, statefp, countyfp, ansicode, pointid, fullname, mtfcc, geometry from (file file:/home/nkaralis/Datasets/Jackpine/pointlm_merge_header.tsv header:t);";
+        String q8 = "distributed create table points1 to 1 on geometry as external select pk_uid, statefp, countyfp, ansicode, pointid, fullname, mtfcc, geometry from (file file:/home/nkaralis/Datasets/Jackpine/pointlm_merge_header.tsv header:t);";
         
         String q9 = "select pk_uid, geomcol from area1";
         
         Statement st = conn.createStatement();
         log.info("Statement created.");
 
-        ResultSet rs = st.executeQuery(q4);
+        ResultSet rs = st.executeQuery(q8);
         log.info("Query executed.");
         printResultset(rs);
         rs.close();
