@@ -114,7 +114,23 @@ public class MadisProcessExecutor {
 //			script.append("-- input tables: "+ state.getOperator().getInputTables().toString() +"\n");
 //			for(int i = 0; i < inputTables.length; i++){
 //				String input = inputTables[i];
-			for (String input : state.getOperator().getInputTables()) {
+			String[] inputTables = state.getOperator().getInputTables().toArray(new String[state.getOperator().getInputTables().size()]);
+			/* attach db tweak. f_table_name must go be attached first */
+			if (inputTables.length > 1) {
+				if (inputTables[0].contains("points1") && inputTables[1].contains("area1")) {
+					inputTables[0]="area1";
+					inputTables[1]="points1";
+				}
+				if (inputTables[0].contains("points1") && inputTables[1].contains("edges1")) {
+					inputTables[0]="edges1";
+					inputTables[1]="points1";
+				}
+				if (inputTables[0].contains("area1") && inputTables[1].contains("edges1")) {
+					inputTables[0]="edges1";
+					inputTables[1]="area1";
+				}
+			}
+			for (String input : inputTables) {
 				List<Integer> parts = state.getOperator().getInputPartitions(input);
 				for (int part : parts) {
 					String loc = null;
@@ -244,9 +260,9 @@ public class MadisProcessExecutor {
 			if (outputParts < 2) {
 				// Create the query
 				if (query.contains("geometry")){
-					log.debug("HELLOOOOOOOOOOOOO");
 					String tempQuery = "";
-					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("geometry")+8);
+					String cols = query.substring(query.indexOf("select") + 7, query.indexOf("geometry")-2);
+					log.debug("COLS: "+cols);
 					cols = cols.replaceAll(" ", "");
 					String fromClause = query.substring(query.indexOf(" from") + 5);
 					ArrayList<String> colsList = new ArrayList<String>(Arrays.asList(cols.split(",")));
