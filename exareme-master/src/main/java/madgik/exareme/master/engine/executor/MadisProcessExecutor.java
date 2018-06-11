@@ -115,7 +115,7 @@ public class MadisProcessExecutor {
 //			for(int i = 0; i < inputTables.length; i++){
 //				String input = inputTables[i];
 			String[] inputTables = state.getOperator().getInputTables().toArray(new String[state.getOperator().getInputTables().size()]);
-			/* attach db tweak. f_table_name must go be attached first */
+			/* attach db tweak. f_table_name must be attached first */
 			if (inputTables.length > 1) {
 				if (inputTables[0].contains("points1") && inputTables[1].contains("area1")) {
 					inputTables[0]="area1";

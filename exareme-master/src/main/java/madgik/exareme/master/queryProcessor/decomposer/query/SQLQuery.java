@@ -329,12 +329,19 @@ public class SQLQuery {
 					joinKeyword = " CROSS JOIN \n";
 				}
 				
-				/* change the order of join in order to have a more efficient query */
-//				if (inputTables.size() > 2){
-//					if(!binaryWhereConditions.toString().contains(inputTables.get(0).toString())){
-//						Collections.swap(inputTables, 0, 1);
-//					}
-//				}
+				/* change the order of join in order to have a more efficient query. spatial extension only! */
+				if (inputTables.size() > 2 && inputTables.toString().contains("spatialindex")){
+					log.debug("SQL QUERY: "+inputTables.toString());
+					if (inputTables.get(0).toString().contains("area1") && inputTables.get(1).toString().contains("points1")) {
+						Collections.swap(inputTables, 0, 1);
+					}
+					if (inputTables.get(0).toString().contains("edges1") && inputTables.get(1).toString().contains("points1")) {
+						Collections.swap(inputTables, 0, 1);
+					}
+					if (inputTables.get(0).toString().contains("edges1") && inputTables.get(1).toString().contains("area1")) {
+						Collections.swap(inputTables, 0, 1);
+					}
+				}
 				
 				for ( int tab=0;tab<inputTables.size();tab++){
 					Table t = inputTables.get(tab);
