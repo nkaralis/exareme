@@ -39,7 +39,8 @@ public class ReadSpatialTotalArea extends SpatialScenarioBase
   private static final Logger logger = Logger.getLogger(ReadSpatialTotalArea.class);
 
   protected PreparedStatement[] pstmtArray;
-  
+  protected Statement stmt;
+  protected String sql;  
   
   
   /** Create a prepared statement array. */
@@ -47,9 +48,10 @@ public class ReadSpatialTotalArea extends SpatialScenarioBase
   {
 	  SpatialSqlDialect dialect = helper.getSpatialSqlDialect(); 
 	    
-	    pstmtArray = new PreparedStatement[1];
-	    String sql = dialect.getSelectTotalArea();
-	    pstmtArray[0] = conn.prepareStatement(sql,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+	  //pstmtArray = new PreparedStatement[1];
+	  stmt = conn.createStatement();
+	  sql = dialect.getSelectTotalArea();
+	  //pstmtArray[0] = conn.prepareStatement(sql,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)
 	    
   }
 
@@ -57,23 +59,26 @@ public class ReadSpatialTotalArea extends SpatialScenarioBase
   public void iterate(long iterationCount) throws Exception
   {
 	  
-    PreparedStatement pstmt = pstmtArray[0];
-    
-    // Do the query.
-    logger.warn(pstmt.toString());
-    ResultSet r = pstmt.executeQuery();
-    r.last();
-    resultsetCount = RESULTSET_COUNT_NA;
+	//PreparedStatement pstmt = pstmtArray[0];
+	 	// Do the query.
+	    logger.warn(stmt.toString());
+	    ResultSet r = stmt.executeQuery(sql);
+	    resultsetCount = 0; 
+	    while(r.next()) {
+	    	resultsetCount++;
+	    }
   }
 
   /** Clean up resources used by scenario. */
   public void cleanup() throws Exception
   {
     // Clean up connections. 
-    for (int i = 0; i < pstmtArray.length; i++)
-      pstmtArray[i].close();
-    if (conn != null)
-      conn.close();
+	// Clean up connections. 
+		//for (int i = 0; i < pstmtArray.length; i++)
+	    // pstmtArray[i].close();
+	stmt.close();
+	if (conn != null)
+		conn.close();
   }
  
 }
